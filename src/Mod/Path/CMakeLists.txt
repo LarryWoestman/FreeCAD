@@ -280,7 +280,22 @@ SET(PathTests_SRCS
     PathTests/test_adaptive.fcstd
     PathTests/test_centroid_00.ngc
     PathTests/test_filenaming.fcstd
+    PathTests/test_centroid_default_ref.ngc
+    PathTests/test_centroid_imperial_ref.ngc
+    PathTests/test_centroid_no_header_ref.ngc
+    PathTests/test_centroid_other_way_ref.ngc
+    PathTests/test_centroid_split-0_ref.ngc
+    PathTests/test_centroid_split-1_ref.ngc
+    PathTests/test_centroid_split-2_ref.ngc
     PathTests/test_geomop.fcstd
+    PathTests/test_grbl_default_ref.ngc
+    PathTests/test_grbl_drill_translate_ref.ngc
+    PathTests/test_grbl_imperial_ref.ngc
+    PathTests/test_grbl_no_header_ref.ngc
+    PathTests/test_grbl_other_way_ref.ngc
+    PathTests/test_grbl_split-0_ref.ngc
+    PathTests/test_grbl_split-1_ref.ngc
+    PathTests/test_grbl_split-2_ref.ngc
     PathTests/test_holes00.fcstd
     PathTests/TestCentroidPost.py
     PathTests/TestGrblPost.py
