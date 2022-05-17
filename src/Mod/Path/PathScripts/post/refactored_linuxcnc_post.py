@@ -40,7 +40,38 @@ if open.__module__ in ["__builtin__", "io"]:
 
 def init_values(values):
     """Initialize many of the commonly used values."""
-    values["now"] = datetime.datetime.now()
+    values["COMMAND_SPACE"] = " "
+    values["COMMENT_SYMBOL"] = "("
+    values["CORNER_MIN"] = {"x": 0, "y": 0, "z": 0}
+    values["CORNER_MAX"] = {"x": 500, "y": 300, "z": 300}
+    # line number starting value
+    values["line_number"] = 100
+    values["NOW"] = datetime.datetime.now()
+    # if true commands are suppressed if they are the same as the previous line.
+    values["MACHINE_NAME"] = "LinuxCNC"
+    values["MODAL"] = False
+    values["OUTPUT_COMMENTS"] = True
+    values["OUTPUT_HEADER"] = True
+    values["OUTPUT_LINE_NUMBERS"] = False
+    # if false duplicate axis values are suppressed if they are the same as the previous line.
+    values["OUTPUT_DOUBLES"] = True
+    # Postamble text will appear following the last operation.
+    values[
+        "POSTAMBLE"
+    ] = """M05
+G17 G54 G90 G80 G40
+M2
+"""
+    # Post operation text will be inserted after every operation
+    values["POST_OPERATION"] = """"""
+    # Preamble text will appear at the beginning of the GCODE output file.
+    values["PREAMBLE"] = """G17 G54 G40 G49 G80 G90"""
+    # Pre operation text will be inserted before every operation
+    values["PRE_OPERATION"] = """"""
+    values["PRECISION"] = 3
+    values["SHOW_EDITOR"] = True
+    # Tool Change commands will be inserted before a tool change
+    values["TOOL_CHANGE"] = """"""
     values[
         "TOOLTIP"
     ] = """This is a postprocessor file for the Path workbench. It is used to
@@ -52,54 +83,17 @@ def init_values(values):
     import linuxcnc_post
     linuxcnc_post.export(object,"/path/to/file.ncc","")
     """
-    #
-    # These values set common customization preferences
-    #
-    values["OUTPUT_COMMENTS"] = True
-    values["OUTPUT_HEADER"] = True
-    values["OUTPUT_LINE_NUMBERS"] = False
-    values["SHOW_EDITOR"] = True
-    # if true commands are suppressed if the same as previous line.
-    values["MODAL"] = False
     # if true G43 will be output following tool changes
-    values["USE_TLO"] = True
-    # if false duplicate axis values are suppressed if the same as previous line.
-    values["OUTPUT_DOUBLES"] = True
-    values["COMMAND_SPACE"] = " "
-    values["COMMENT_SYMBOL"] = "("
-    # line number starting value
-    values["LINENR"] = 100
-    #
-    # These values will be reflected in the Machine configuration of the project
-    #
     # G21 for metric, G20 for US standard
     values["UNITS"] = "G21"
-    values["UNIT_SPEED_FORMAT"] = "mm/min"
     values["UNIT_FORMAT"] = "mm"
-    values["MACHINE_NAME"] = "LinuxCNC"
-    values["CORNER_MIN"] = {"x": 0, "y": 0, "z": 0}
-    values["CORNER_MAX"] = {"x": 500, "y": 300, "z": 300}
-    values["PRECISION"] = 3
-    # Preamble text will appear at the beginning of the GCODE output file.
-    values["PREAMBLE"] = """G17 G54 G40 G49 G80 G90"""
-    # Postamble text will appear following the last operation.
-    values[
-        "POSTAMBLE"
-    ] = """M05
-G17 G54 G90 G80 G40
-M2
-"""
-    # Pre operation text will be inserted before every operation
-    values["PRE_OPERATION"] = """"""
-    # Post operation text will be inserted after every operation
-    values["POST_OPERATION"] = """"""
-    # Tool Change commands will be inserted before a tool change
-    values["TOOL_CHANGE"] = """"""
+    values["UNIT_SPEED_FORMAT"] = "mm/min"
+    values["USE_TLO"] = True
 
 
 def processArguments(values, argstring):
     """Process the arguments to the postprocessor."""
-    parser = argparse.ArgumentParser(prog="linuxcnc", add_help=False)
+    parser = argparse.ArgumentParser(prog=values["MACHINE_NAME"], add_help=False)
     parser.add_argument("--no-header", action="store_true", help="suppress header output")
     parser.add_argument("--no-comments", action="store_true", help="suppress comment output")
     parser.add_argument("--line-numbers", action="store_true", help="prefix with line numbers")
@@ -111,11 +105,15 @@ def processArguments(values, argstring):
     parser.add_argument("--precision", default="3", help="number of digits of precision, default=3")
     parser.add_argument(
         "--preamble",
-        help='set commands to be issued before the first command, default="G17\nG90"',
+        help='set commands to be issued before the first command, default="'
+        + values["PREAMBLE"]
+        + '"',
     )
     parser.add_argument(
         "--postamble",
-        help='set commands to be issued after the last command, default="M05\nG17 G90\nM2"',
+        help='set commands to be issued after the last command, default="'
+        + values["POSTAMBLE"]
+        + '"',
     )
     parser.add_argument(
         "--inches", action="store_true", help="Convert output for US imperial mode (G20)"
@@ -170,8 +168,8 @@ def processArguments(values, argstring):
 def linenumber(values):
     """Output the next line number if appropriate."""
     if values["OUTPUT_LINE_NUMBERS"]:
-        values["LINENR"] += 10
-        return "N" + str(values["LINENR"]) + " "
+        values["line_number"] += 10
+        return "N" + str(values["line_number"]) + " "
     return ""
 
 
@@ -328,14 +326,12 @@ def parse(values, pathobj):
         return out
 
 
-#
-# Holds various values that are used throughout the postprocessor code.
-#
-values = {}
-
-
 def export(objectslist, filename, argstring):
     """Postprocess the objects in objectslist to filename."""
+    #
+    # Holds various values that are used throughout the postprocessor code.
+    #
+    values = {}
     init_values(values)
 
     if not processArguments(values, argstring):
@@ -357,7 +353,7 @@ def export(objectslist, filename, argstring):
         gcode += linenumber(values) + comment
         comment = create_comment(values, "(Post Processor: " + __name__ + ")\n")
         gcode += linenumber(values) + comment
-        comment = create_comment(values, "(Output Time:" + str(values["now"]) + ")\n")
+        comment = create_comment(values, "(Output Time:" + str(values["NOW"]) + ")\n")
         gcode += linenumber(values) + comment
 
     # Write the preamble
