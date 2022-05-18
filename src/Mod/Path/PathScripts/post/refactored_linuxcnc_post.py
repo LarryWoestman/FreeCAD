@@ -37,80 +37,15 @@ from PathScripts import PostUtils
 if open.__module__ in ["__builtin__", "io"]:
     pythonopen = open
 
+TOOLTIP = """This is a postprocessor file for the Path workbench. It is used to
+take a pseudo-gcode fragment outputted by a Path object, and output
+real GCode suitable for a linuxcnc 3 axis mill. This postprocessor, once placed
+in the appropriate PathScripts folder, can be used directly from inside
+FreeCAD, via the GUI importer or via python scripts with:
 
-def init_values(values):
-    """Initialize many of the commonly used values."""
-    values["COMMAND_SPACE"] = " "
-    values["COMMENT_SYMBOL"] = "("
-    values["CORNER_MIN"] = {"x": 0, "y": 0, "z": 0}
-    values["CORNER_MAX"] = {"x": 500, "y": 300, "z": 300}
-    # line number starting value
-    values["line_number"] = 100
-    values["NOW"] = datetime.datetime.now()
-    # if true commands are suppressed if they are the same as the previous line.
-    values["MACHINE_NAME"] = "LinuxCNC"
-    values["MODAL"] = False
-    values["OUTPUT_COMMENTS"] = True
-    values["OUTPUT_HEADER"] = True
-    values["OUTPUT_LINE_NUMBERS"] = False
-    # if false duplicate axis values are suppressed if they are the same as the previous line.
-    values["OUTPUT_DOUBLES"] = True
-    # the order of parameters
-    # linuxcnc doesn't want K properties on XY plane  Arcs need work.
-    values["PARAMETER_ORDER"] = [
-        "X",
-        "Y",
-        "Z",
-        "A",
-        "B",
-        "C",
-        "I",
-        "J",
-        "F",
-        "S",
-        "T",
-        "Q",
-        "R",
-        "L",
-        "H",
-        "D",
-        "P",
-    ]
-    # Postamble text will appear following the last operation.
-    values[
-        "POSTAMBLE"
-    ] = """M05
-G17 G54 G90 G80 G40
-M2
+import linuxcnc_post
+linuxcnc_post.export(object,"/path/to/file.ncc","")
 """
-    # Post operation text will be inserted after every operation
-    values["POST_OPERATION"] = """"""
-    # Preamble text will appear at the beginning of the GCODE output file.
-    values["PREAMBLE"] = """G17 G54 G40 G49 G80 G90"""
-    # Pre operation text will be inserted before every operation
-    values["PRE_OPERATION"] = """"""
-    values["PRECISION"] = 3
-    values["SHOW_EDITOR"] = True
-    # Tool Change commands will be inserted before a tool change
-    values["TOOL_CHANGE"] = """"""
-    values[
-        "TOOLTIP"
-    ] = """This is a postprocessor file for the Path workbench. It is used to
-    take a pseudo-gcode fragment outputted by a Path object, and output
-    real GCode suitable for a linuxcnc 3 axis mill. This postprocessor, once placed
-    in the appropriate PathScripts folder, can be used directly from inside
-    FreeCAD, via the GUI importer or via python scripts with:
-
-    import linuxcnc_post
-    linuxcnc_post.export(object,"/path/to/file.ncc","")
-    """
-    # if true G43 will be output following tool changes
-    # G21 for metric, G20 for US standard
-    values["UNITS"] = "G21"
-    values["UNIT_FORMAT"] = "mm"
-    values["UNIT_SPEED_FORMAT"] = "mm/min"
-    values["USE_TLO"] = True
-
 
 def processArguments(values, argstring):
     """Process the arguments to the postprocessor."""
@@ -186,21 +121,6 @@ def processArguments(values, argstring):
     return True
 
 
-def linenumber(values):
-    """Output the next line number if appropriate."""
-    if values["OUTPUT_LINE_NUMBERS"]:
-        values["line_number"] += 10
-        return "N" + str(values["line_number"]) + " "
-    return ""
-
-
-def create_comment(comment_string, comment_symbol):
-    """Create a comment from a string using the correct comment symbol."""
-    if comment_symbol != "(":
-        comment_string = PostUtils.fcoms(comment_string, comment_symbol)
-    return comment_string
-
-
 def parse(values, pathobj):
     """Parse a Path."""
     out = ""
@@ -213,10 +133,10 @@ def parse(values, pathobj):
 
     if hasattr(pathobj, "Group"):  # We have a compound or project.
         # if values["OUTPUT_COMMENTS"]:
-        #     comment = create_comment(
+        #     comment = PostUtils.create_comment(
         #         "(compound: " + pathobj.Label + ")\n", values["COMMENT_SYMBOL"]
         #     )
-        #   out += linenumber(values) + comment
+        #   out += PostUtils.linenumber(values) + comment
         for p in pathobj.Group:
             out += parse(values, p)
         return out
@@ -227,8 +147,10 @@ def parse(values, pathobj):
             return out
 
         # if values["OUTPUT_COMMENTS"]:
-        #     comment = create_comment("(" + pathobj.Label + ")\n", values["COMMENT_SYMBOL"])
-        #     out += linenumber(values) + comment
+        #     comment = PostUtils.create_comment(
+        #         "(" + pathobj.Label + ")\n", values["COMMENT_SYMBOL"]
+        #     )
+        #     out += PostUtils.linenumber(values) + comment
 
         for c in pathobj.Path.Commands:
 
@@ -297,9 +219,9 @@ def parse(values, pathobj):
             # Check for Tool Change:
             if command == "M6":
                 # stop the spindle
-                out += linenumber(values) + "M5\n"
+                out += PostUtils.linenumber(values) + "M5\n"
                 for line in values["TOOL_CHANGE"].splitlines(True):
-                    out += linenumber(values) + line
+                    out += PostUtils.linenumber(values) + line
 
                 # add height offset
                 if values["USE_TLO"]:
@@ -315,7 +237,7 @@ def parse(values, pathobj):
             # prepend a line number and append a newline
             if len(outstring) >= 1:
                 if values["OUTPUT_LINE_NUMBERS"]:
-                    outstring.insert(0, (linenumber(values)))
+                    outstring.insert(0, (PostUtils.linenumber(values)))
 
                 # append the line to the final output
                 for w in outstring:
@@ -333,7 +255,7 @@ def export(objectslist, filename, argstring):
     # Holds various values that are used throughout the postprocessor code.
     #
     values = {}
-    init_values(values)
+    PostUtils.init_values(values)
 
     if not processArguments(values, argstring):
         return None
@@ -350,22 +272,24 @@ def export(objectslist, filename, argstring):
 
     # write header
     if values["OUTPUT_HEADER"]:
-        comment = create_comment("(Exported by FreeCAD)\n", values["COMMENT_SYMBOL"])
-        gcode += linenumber(values) + comment
-        comment = create_comment("(Post Processor: " + __name__ + ")\n", values["COMMENT_SYMBOL"])
-        gcode += linenumber(values) + comment
-        comment = create_comment(
-            "(Output Time:" + str(values["NOW"]) + ")\n", values["COMMENT_SYMBOL"]
+        comment = PostUtils.create_comment("(Exported by FreeCAD)\n", values["COMMENT_SYMBOL"])
+        gcode += PostUtils.linenumber(values) + comment
+        comment = PostUtils.create_comment(
+            "(Post Processor: " + __name__ + ")\n", values["COMMENT_SYMBOL"]
         )
-        gcode += linenumber(values) + comment
+        gcode += PostUtils.linenumber(values) + comment
+        comment = PostUtils.create_comment(
+            "(Output Time:" + str(datetime.datetime.now()) + ")\n", values["COMMENT_SYMBOL"]
+        )
+        gcode += PostUtils.linenumber(values) + comment
 
     # Write the preamble
     if values["OUTPUT_COMMENTS"]:
-        comment = create_comment("(begin preamble)\n", values["COMMENT_SYMBOL"])
-        gcode += linenumber(values) + comment
+        comment = PostUtils.create_comment("(begin preamble)\n", values["COMMENT_SYMBOL"])
+        gcode += PostUtils.linenumber(values) + comment
     for line in values["PREAMBLE"].splitlines(False):
-        gcode += linenumber(values) + line + "\n"
-    gcode += linenumber(values) + values["UNITS"] + "\n"
+        gcode += PostUtils.linenumber(values) + line + "\n"
+    gcode += PostUtils.linenumber(values) + values["UNITS"] + "\n"
 
     for obj in objectslist:
 
@@ -379,16 +303,16 @@ def export(objectslist, filename, argstring):
 
         # do the pre_op
         if values["OUTPUT_COMMENTS"]:
-            comment = create_comment(
+            comment = PostUtils.create_comment(
                 "(begin operation: %s)\n" % obj.Label, values["COMMENT_SYMBOL"]
             )
-            gcode += linenumber(values) + comment
-            comment = create_comment(
+            gcode += PostUtils.linenumber(values) + comment
+            comment = PostUtils.create_comment(
                 "(machine units: %s)\n" % values["UNIT_SPEED_FORMAT"], values["COMMENT_SYMBOL"]
             )
-            gcode += linenumber(values) + comment
+            gcode += PostUtils.linenumber(values) + comment
         for line in values["PRE_OPERATION"].splitlines(True):
-            gcode += linenumber(values) + line
+            gcode += PostUtils.linenumber(values) + line
 
         # get coolant mode
         coolantMode = "None"
@@ -401,42 +325,42 @@ def export(objectslist, filename, argstring):
         # turn coolant on if required
         if values["OUTPUT_COMMENTS"]:
             if not coolantMode == "None":
-                comment = create_comment(
+                comment = PostUtils.create_comment(
                     "(Coolant On:" + coolantMode + ")\n", values["COMMENT_SYMBOL"]
                 )
-                gcode += linenumber(values) + comment
+                gcode += PostUtils.linenumber(values) + comment
         if coolantMode == "Flood":
-            gcode += linenumber(values) + "M8" + "\n"
+            gcode += PostUtils.linenumber(values) + "M8" + "\n"
         if coolantMode == "Mist":
-            gcode += linenumber(values) + "M7" + "\n"
+            gcode += PostUtils.linenumber(values) + "M7" + "\n"
 
         # process the operation gcode
         gcode += parse(values, obj)
 
         # do the post_op
         if values["OUTPUT_COMMENTS"]:
-            comment = create_comment(
+            comment = PostUtils.create_comment(
                 "(finish operation: %s)\n" % obj.Label, values["COMMENT_SYMBOL"]
             )
-            gcode += linenumber(values) + comment
+            gcode += PostUtils.linenumber(values) + comment
         for line in values["POST_OPERATION"].splitlines(True):
-            gcode += linenumber(values) + line
+            gcode += PostUtils.linenumber(values) + line
 
         # turn coolant off if required
         if not coolantMode == "None":
             if values["OUTPUT_COMMENTS"]:
-                comment = create_comment(
+                comment = PostUtils.create_comment(
                     "(Coolant Off:" + coolantMode + ")\n", values["COMMENT_SYMBOL"]
                 )
-                gcode += linenumber(values) + comment
-            gcode += linenumber(values) + "M9" + "\n"
+                gcode += PostUtils.linenumber(values) + comment
+            gcode += PostUtils.linenumber(values) + "M9" + "\n"
 
     # do the post_amble
     if values["OUTPUT_COMMENTS"]:
-        comment = create_comment("(begin postamble)\n", values["COMMENT_SYMBOL"])
+        comment = PostUtils.create_comment("(begin postamble)\n", values["COMMENT_SYMBOL"])
         gcode += comment
     for line in values["POSTAMBLE"].splitlines(True):
-        gcode += linenumber(values) + line
+        gcode += PostUtils.linenumber(values) + line
 
     if FreeCAD.GuiUp and values["SHOW_EDITOR"]:
         final = gcode

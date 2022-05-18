@@ -23,18 +23,20 @@
 # ***************************************************************************
 
 """
-These are a common functions and classes for creating custom post processors.
+These are common functions and classes for creating custom post processors.
 """
 
 from PySide import QtCore, QtGui
+
 import FreeCAD
-from PathMachineState import MachineState
+
 import Path
 import Part
+
+from PathMachineState import MachineState
 from PathScripts.PathGeom import CmdMoveArc, edgeForCmd, cmdsForEdge
 
 translate = FreeCAD.Qt.translate
-
 FreeCADGui = None
 if FreeCAD.GuiUp:
     import FreeCADGui
@@ -147,7 +149,7 @@ def stringsplit(commandline):
 
 
 def fmt(num, dec, units):
-    """used to format axis moves, feedrate, etc for decimal places and units"""
+    """Use to format axis moves, feedrate, etc for decimal places and units."""
     if units == "G21":  # metric
         fnum = "%.*f" % (dec, num)
     else:  # inch
@@ -156,8 +158,7 @@ def fmt(num, dec, units):
 
 
 def editor(gcode):
-    """pops up a handy little editor to look at the code output"""
-
+    """Pops up a handy little editor to look at the code output."""
     prefs = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Mod/Path")
     # default Max Highlighter Size = 512 Ko
     defaultMHS = 512 * 1024
@@ -176,9 +177,7 @@ def editor(gcode):
         FreeCAD.Console.PrintMessage(
             translate(
                 "Path",
-                "GCode size too big ({} o), disabling syntax highlighter.".format(
-                    gcodeSize
-                ),
+                "GCode size too big ({} o), disabling syntax highlighter.".format(gcodeSize),
             )
         )
     result = dia.exec_()
@@ -190,7 +189,7 @@ def editor(gcode):
 
 
 def fcoms(string, commentsym):
-    """filter and rebuild comments with user preferred comment symbol"""
+    """Filter and rebuild comments with user preferred comment symbol."""
     if len(commentsym) == 1:
         s1 = string.replace("(", commentsym)
         comment = s1.replace(")", "")
@@ -200,8 +199,10 @@ def fcoms(string, commentsym):
 
 
 def splitArcs(path):
-    """filters a path object and replaces at G2/G3 moves with discrete G1
-    returns a Path object"""
+    """Filter a path object and replace all G2/G3 moves with discrete G1 moves.
+
+    Returns a Path object.
+    """
     prefGrp = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Mod/Path")
     deflection = prefGrp.GetFloat("LibAreaCurveAccuarcy", 0.01)
 
@@ -226,3 +227,83 @@ def splitArcs(path):
         machine.addCommand(command)
 
     return Path.Path(results)
+
+
+def init_values(values):
+    """Initialize many of the commonly used values in postprocessors."""
+    values["COMMAND_SPACE"] = " "
+    values["COMMENT_SYMBOL"] = "("
+    values["CORNER_MIN"] = {"x": 0, "y": 0, "z": 0}
+    values["CORNER_MAX"] = {"x": 500, "y": 300, "z": 300}
+    # line number starting value
+    values["line_number"] = 100
+    # if true commands are suppressed if they are the same as the previous line.
+    values["MACHINE_NAME"] = "LinuxCNC"
+    values["MODAL"] = False
+    values["OUTPUT_COMMENTS"] = True
+    values["OUTPUT_HEADER"] = True
+    values["OUTPUT_LINE_NUMBERS"] = False
+    # if false duplicate axis values are suppressed if they are the same as the previous line.
+    values["OUTPUT_DOUBLES"] = True
+    # the order of parameters
+    # linuxcnc doesn't want K properties on XY plane  Arcs need work.
+    values["PARAMETER_ORDER"] = [
+        "X",
+        "Y",
+        "Z",
+        "A",
+        "B",
+        "C",
+        "I",
+        "J",
+        "F",
+        "S",
+        "T",
+        "Q",
+        "R",
+        "L",
+        "H",
+        "D",
+        "P",
+    ]
+    # Postamble text will appear following the last operation.
+    values[
+        "POSTAMBLE"
+    ] = """M05
+G17 G54 G90 G80 G40
+M2
+"""
+    # Post operation text will be inserted after every operation
+    values["POST_OPERATION"] = """"""
+    # Preamble text will appear at the beginning of the GCODE output file.
+    values[
+        "PREAMBLE"
+    ] = """G17 G54 G40 G49 G80 G90
+"""
+    # Pre operation text will be inserted before every operation
+    values["PRE_OPERATION"] = """"""
+    values["PRECISION"] = 3
+    values["SHOW_EDITOR"] = True
+    # Tool Change commands will be inserted before a tool change
+    values["TOOL_CHANGE"] = """"""
+    # if true G43 will be output following tool changes
+    # G21 for metric, G20 for US standard
+    values["UNITS"] = "G21"
+    values["UNIT_FORMAT"] = "mm"
+    values["UNIT_SPEED_FORMAT"] = "mm/min"
+    values["USE_TLO"] = True
+
+
+def linenumber(values):
+    """Output the next line number if appropriate."""
+    if values["OUTPUT_LINE_NUMBERS"]:
+        values["line_number"] += 10
+        return "N" + str(values["line_number"]) + " "
+    return ""
+
+
+def create_comment(comment_string, comment_symbol):
+    """Create a comment from a string using the correct comment symbol."""
+    if comment_symbol != "(":
+        comment_string = fcoms(comment_string, comment_symbol)
+    return comment_string
