@@ -55,6 +55,27 @@ def init_values(values):
     values["OUTPUT_LINE_NUMBERS"] = False
     # if false duplicate axis values are suppressed if they are the same as the previous line.
     values["OUTPUT_DOUBLES"] = True
+    # the order of parameters
+    # linuxcnc doesn't want K properties on XY plane  Arcs need work.
+    values["PARAMETER_ORDER"] = [
+        "X",
+        "Y",
+        "Z",
+        "A",
+        "B",
+        "C",
+        "I",
+        "J",
+        "F",
+        "S",
+        "T",
+        "Q",
+        "R",
+        "L",
+        "H",
+        "D",
+        "P",
+    ]
     # Postamble text will appear following the last operation.
     values[
         "POSTAMBLE"
@@ -173,13 +194,11 @@ def linenumber(values):
     return ""
 
 
-def create_comment(values, comment_string):
+def create_comment(comment_string, comment_symbol):
     """Create a comment from a string using the correct comment symbol."""
-    comment = comment_string
-    comment_symbol = values["COMMENT_SYMBOL"]
     if comment_symbol != "(":
-        comment = PostUtils.fcoms(comment_string, comment_symbol)
-    return comment
+        comment_string = PostUtils.fcoms(comment_string, comment_symbol)
+    return comment_string
 
 
 def parse(values, pathobj):
@@ -189,34 +208,15 @@ def parse(values, pathobj):
     precision_string = "." + str(values["PRECISION"]) + "f"
     currLocation = {}  # keep track for no doubles
 
-    # the order of parameters
-    # linuxcnc doesn't want K properties on XY plane  Arcs need work.
-    params = [
-        "X",
-        "Y",
-        "Z",
-        "A",
-        "B",
-        "C",
-        "I",
-        "J",
-        "F",
-        "S",
-        "T",
-        "Q",
-        "R",
-        "L",
-        "H",
-        "D",
-        "P",
-    ]
     firstmove = Path.Command("G0", {"X": -1, "Y": -1, "Z": -1, "F": 0.0})
     currLocation.update(firstmove.Parameters)  # set First location Parameters
 
     if hasattr(pathobj, "Group"):  # We have a compound or project.
         # if values["OUTPUT_COMMENTS"]:
-        #     comment = create_comment(values, "(compound: " + pathobj.Label + ")\n")
-        #     out += linenumber(values) + comment
+        #     comment = create_comment(
+        #         "(compound: " + pathobj.Label + ")\n", values["COMMENT_SYMBOL"]
+        #     )
+        #   out += linenumber(values) + comment
         for p in pathobj.Group:
             out += parse(values, p)
         return out
@@ -227,7 +227,7 @@ def parse(values, pathobj):
             return out
 
         # if values["OUTPUT_COMMENTS"]:
-        #     comment = create_comment(values, "(" + pathobj.Label + ")\n")
+        #     comment = create_comment("(" + pathobj.Label + ")\n", values["COMMENT_SYMBOL"])
         #     out += linenumber(values) + comment
 
         for c in pathobj.Path.Commands:
@@ -245,15 +245,16 @@ def parse(values, pathobj):
                 continue
 
             # Now add the remaining parameters in order
-            for param in params:
+            for param in values["PARAMETER_ORDER"]:
                 if param in c.Parameters:
                     if param == "F" and (
                         currLocation[param] != c.Parameters[param] or values["OUTPUT_DOUBLES"]
                     ):
+                        # linuxcnc doesn't use rapid speeds
                         if c.Name not in [
                             "G0",
                             "G00",
-                        ]:  # linuxcnc doesn't use rapid speeds
+                        ]:
                             speed = Units.Quantity(c.Parameters["F"], FreeCAD.Units.Velocity)
                             if speed.getValueAs(values["UNIT_SPEED_FORMAT"]) > 0.0:
                                 outstring.append(
@@ -349,16 +350,18 @@ def export(objectslist, filename, argstring):
 
     # write header
     if values["OUTPUT_HEADER"]:
-        comment = create_comment(values, "(Exported by FreeCAD)\n")
+        comment = create_comment("(Exported by FreeCAD)\n", values["COMMENT_SYMBOL"])
         gcode += linenumber(values) + comment
-        comment = create_comment(values, "(Post Processor: " + __name__ + ")\n")
+        comment = create_comment("(Post Processor: " + __name__ + ")\n", values["COMMENT_SYMBOL"])
         gcode += linenumber(values) + comment
-        comment = create_comment(values, "(Output Time:" + str(values["NOW"]) + ")\n")
+        comment = create_comment(
+            "(Output Time:" + str(values["NOW"]) + ")\n", values["COMMENT_SYMBOL"]
+        )
         gcode += linenumber(values) + comment
 
     # Write the preamble
     if values["OUTPUT_COMMENTS"]:
-        comment = create_comment(values, "(begin preamble)\n")
+        comment = create_comment("(begin preamble)\n", values["COMMENT_SYMBOL"])
         gcode += linenumber(values) + comment
     for line in values["PREAMBLE"].splitlines(False):
         gcode += linenumber(values) + line + "\n"
@@ -376,10 +379,12 @@ def export(objectslist, filename, argstring):
 
         # do the pre_op
         if values["OUTPUT_COMMENTS"]:
-            comment = create_comment(values, "(begin operation: %s)\n" % obj.Label)
+            comment = create_comment(
+                "(begin operation: %s)\n" % obj.Label, values["COMMENT_SYMBOL"]
+            )
             gcode += linenumber(values) + comment
             comment = create_comment(
-                values, "(machine units: %s)\n" % (values["UNIT_SPEED_FORMAT"])
+                "(machine units: %s)\n" % values["UNIT_SPEED_FORMAT"], values["COMMENT_SYMBOL"]
             )
             gcode += linenumber(values) + comment
         for line in values["PRE_OPERATION"].splitlines(True):
@@ -396,7 +401,9 @@ def export(objectslist, filename, argstring):
         # turn coolant on if required
         if values["OUTPUT_COMMENTS"]:
             if not coolantMode == "None":
-                comment = create_comment(values, "(Coolant On:" + coolantMode + ")\n")
+                comment = create_comment(
+                    "(Coolant On:" + coolantMode + ")\n", values["COMMENT_SYMBOL"]
+                )
                 gcode += linenumber(values) + comment
         if coolantMode == "Flood":
             gcode += linenumber(values) + "M8" + "\n"
@@ -408,7 +415,9 @@ def export(objectslist, filename, argstring):
 
         # do the post_op
         if values["OUTPUT_COMMENTS"]:
-            comment = create_comment(values, "(finish operation: %s)\n" % obj.Label)
+            comment = create_comment(
+                "(finish operation: %s)\n" % obj.Label, values["COMMENT_SYMBOL"]
+            )
             gcode += linenumber(values) + comment
         for line in values["POST_OPERATION"].splitlines(True):
             gcode += linenumber(values) + line
@@ -416,13 +425,15 @@ def export(objectslist, filename, argstring):
         # turn coolant off if required
         if not coolantMode == "None":
             if values["OUTPUT_COMMENTS"]:
-                comment = create_comment(values, "(Coolant Off:" + coolantMode + ")\n")
+                comment = create_comment(
+                    "(Coolant Off:" + coolantMode + ")\n", values["COMMENT_SYMBOL"]
+                )
                 gcode += linenumber(values) + comment
             gcode += linenumber(values) + "M9" + "\n"
 
     # do the post_amble
     if values["OUTPUT_COMMENTS"]:
-        comment = create_comment(values, "(begin postamble)\n")
+        comment = create_comment("(begin postamble)\n", values["COMMENT_SYMBOL"])
         gcode += comment
     for line in values["POSTAMBLE"].splitlines(True):
         gcode += linenumber(values) + line
