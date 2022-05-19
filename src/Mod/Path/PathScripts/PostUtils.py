@@ -232,65 +232,26 @@ def splitArcs(path):
 def init_values(values):
     """Initialize many of the commonly used values in postprocessors."""
     values["COMMAND_SPACE"] = " "
-    values["COMMENT_SYMBOL"] = "("
-    values["CORNER_MIN"] = {"x": 0, "y": 0, "z": 0}
-    values["CORNER_MAX"] = {"x": 500, "y": 300, "z": 300}
     # line number starting value
     values["line_number"] = 100
     # if true commands are suppressed if they are the same as the previous line.
-    values["MACHINE_NAME"] = "LinuxCNC"
     values["MODAL"] = False
     values["OUTPUT_COMMENTS"] = True
     values["OUTPUT_HEADER"] = True
     values["OUTPUT_LINE_NUMBERS"] = False
     # if false duplicate axis values are suppressed if they are the same as the previous line.
     values["OUTPUT_DOUBLES"] = True
-    # the order of parameters
-    # linuxcnc doesn't want K properties on XY plane  Arcs need work.
-    values["PARAMETER_ORDER"] = [
-        "X",
-        "Y",
-        "Z",
-        "A",
-        "B",
-        "C",
-        "I",
-        "J",
-        "F",
-        "S",
-        "T",
-        "Q",
-        "R",
-        "L",
-        "H",
-        "D",
-        "P",
-    ]
-    # Postamble text will appear following the last operation.
-    values[
-        "POSTAMBLE"
-    ] = """M05
-G17 G54 G90 G80 G40
-M2
-"""
     # Post operation text will be inserted after every operation
     values["POST_OPERATION"] = """"""
-    # Preamble text will appear at the beginning of the GCODE output file.
-    values[
-        "PREAMBLE"
-    ] = """G17 G54 G40 G49 G80 G90
-"""
     # Pre operation text will be inserted before every operation
     values["PRE_OPERATION"] = """"""
     values["PRECISION"] = 3
     values["SHOW_EDITOR"] = True
     # Tool Change commands will be inserted before a tool change
     values["TOOL_CHANGE"] = """"""
-    # if true G43 will be output following tool changes
-    # G21 for metric, G20 for US standard
-    values["UNITS"] = "G21"
     values["UNIT_FORMAT"] = "mm"
     values["UNIT_SPEED_FORMAT"] = "mm/min"
+    # if true G43 will be output following tool changes
     values["USE_TLO"] = True
 
 

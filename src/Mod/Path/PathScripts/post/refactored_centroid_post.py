@@ -33,6 +33,20 @@ from FreeCAD import Units
 from PathScripts import PathToolController
 from PathScripts import PostUtils
 
+#
+# The following variables need to be global variables
+# to keep the PathPostProcessor.load method happy:
+#
+#    CORNER_MAX
+#    CORNER_MIN
+#    MACHINE_NAME
+#    TOOLTIP
+#    TOOLTIP_ARGS
+#    UNITS
+#
+CORNER_MAX = {"x": 609.6, "y": 152.4, "z": 304.8}
+CORNER_MIN = {"x": -609.6, "y": -152.4, "z": 0}
+MACHINE_NAME = "Centroid"
 TOOLTIP = """
 This is a postprocessor file for the Path workbench. It is used to
 take a pseudo-gcode fragment outputted by a Path object, and output
@@ -43,7 +57,6 @@ FreeCAD, via the GUI importer or via python scripts with:
 import centroid_post
 centroid_post.export(object,"/path/to/file.ncc","")
 """
-
 TOOLTIP_ARGS = """
 Arguments for centroid:
     --header,--no-header             ... output headers (--header)
@@ -54,6 +67,8 @@ Arguments for centroid:
     --axis-precision=4               ... number of digits of precision for axis moves.  Default=4
     --inches                         ... Convert output for US imperial mode (G20)
 """
+# G21 for metric, G20 for US standard
+UNITS = "G21"
 
 # to distinguish python built-in open function from the one declared below
 if open.__module__ in ["__builtin__", "io"]:
@@ -61,6 +76,9 @@ if open.__module__ in ["__builtin__", "io"]:
 
 
 def processArguments(values, argstring):
+    #
+    global UNITS
+
     for arg in argstring.split():
         if arg == "--header":
             values["OUTPUT_HEADER"] = True
@@ -83,62 +101,170 @@ def processArguments(values, argstring):
         elif arg.split("=")[0] == "--feed-precision":
             values["FEED_PRECISION"] = arg.split("=")[1]
         elif arg == "--inches":
-            values["UNITS"] = "G20"
+            UNITS = "G20"
             values["UNIT_SPEED_FORMAT"] = "in/min"
             values["UNIT_FORMAT"] = "in"
 
 
+def parse(values, pathobj):
+    out = ""
+    lastcommand = None
+    axis_precision_string = "." + str(values["AXIS_PRECISION"]) + "f"
+    feed_precision_string = "." + str(values["FEED_PRECISION"]) + "f"
+
+    if hasattr(pathobj, "Group"):  # We have a compound or project.
+        # if values["OUTPUT_COMMENTS"]:
+        #     out += PostUtils.linenumber(values) + "(compound: " + pathobj.Label + ")\n"
+        for p in pathobj.Group:
+            out += parse(values, p)
+        return out
+    else:  # parsing simple path
+
+        # groups might contain non-path things like stock.
+        if not hasattr(pathobj, "Path"):
+            return out
+
+        # if values["OUTPUT_COMMENTS"]:
+        #     out += PostUtils.linenumber(values) + "(" + pathobj.Label + ")\n"
+
+        for c in pathobj.Path.Commands:
+            commandlist = []  # list of elements in the command, code and params.
+            command = c.Name  # command M or G code or comment string
+
+            if command[0] == "(":
+                command = PostUtils.fcoms(command, values["COMMENT_SYMBOL"])
+
+            commandlist.append(command)
+            # if modal: only print the command if it is not the same as the
+            # last one
+            if values["MODAL"] is True:
+                if command == lastcommand:
+                    commandlist.pop(0)
+
+            # Now add the remaining parameters in order
+            for param in values["PARAMETER_ORDER"]:
+                if param in c.Parameters:
+                    if param == "F":
+                        # centroid doesn't use rapid speeds
+                        if c.Name not in [
+                            "G0",
+                            "G00",
+                        ]:
+                            speed = Units.Quantity(c.Parameters["F"], FreeCAD.Units.Velocity)
+                            commandlist.append(
+                                param
+                                + format(
+                                    float(speed.getValueAs(values["UNIT_SPEED_FORMAT"])),
+                                    feed_precision_string,
+                                )
+                            )
+                    elif param == "H":
+                        commandlist.append(param + str(int(c.Parameters["H"])))
+                    elif param == "S":
+                        commandlist.append(
+                            param
+                            + PostUtils.fmt(c.Parameters["S"], values["SPINDLE_DECIMALS"], "G21")
+                        )
+                    elif param == "T":
+                        commandlist.append(param + str(int(c.Parameters["T"])))
+                    else:
+                        pos = Units.Quantity(c.Parameters[param], FreeCAD.Units.Length)
+                        commandlist.append(
+                            param
+                            + format(
+                                float(pos.getValueAs(values["UNIT_FORMAT"])),
+                                axis_precision_string,
+                            )
+                        )
+            outstr = str(commandlist)
+            outstr = outstr.replace("[", "")
+            outstr = outstr.replace("]", "")
+            outstr = outstr.replace("'", "")
+            outstr = outstr.replace(",", "")
+
+            # store the latest command
+            lastcommand = command
+
+            # Check for Tool Change:
+            if command == "M6":
+                # if values["OUTPUT_COMMENTS"]:
+                #     out += PostUtils.linenumber(values) + "(begin toolchange)\n"
+                for line in values["TOOL_CHANGE"].splitlines(True):
+                    out += PostUtils.linenumber(values) + line
+
+            # if command == "message":
+            #     if values["OUTPUT_COMMENTS"] is False:
+            #         out = []
+            #     else:
+            #         commandlist.pop(0)  # remove the command
+
+            # prepend a line number and append a newline
+            if len(commandlist) >= 1:
+                if values["OUTPUT_LINE_NUMBERS"]:
+                    commandlist.insert(0, (PostUtils.linenumber(values)))
+
+                # append the line to the final output
+                for w in commandlist:
+                    out += w + values["COMMAND_SPACE"]
+                out = out.strip() + "\n"
+
+        return out
+
+
 def export(objectslist, filename, argstring):
+    """Postprocess the objects in objectslist to filename."""
+    #
+    global UNITS
+
+    #
+    # Holds various values that are used throughout the postprocessor code.
+    #
     values = {}
     PostUtils.init_values(values)
+    values["AXIS_PRECISION"] = 4
     values["COMMENT_SYMBOL"] = ";"
-    values["CORNER_MIN"] = {"x": -609.6, "y": -152.4, "z": 0}  # use metric for internal units
-    values["CORNER_MAX"] = {"x": 609.6, "y": 152.4, "z": 304.8}  # use metric for internal units
-    values["MACHINE_NAME"] = "Centroid"
+    values["FEED_PRECISION"] = 1
+    # This list controls the order of parameters in a line during output.
+    # centroid doesn't want K properties on XY plane; Arcs need work.
+    values["PARAMETER_ORDER"] = [
+        "X",
+        "Y",
+        "Z",
+        "A",
+        "B",
+        "I",
+        "J",
+        "F",
+        "S",
+        "T",
+        "Q",
+        "R",
+        "L",
+        "H",
+    ]
     # Postamble text will appear following the last operation.
-    values["POSTAMBLE"] = """M99
+    POSTAMBLE = """M99
 """
     # Preamble text will appear at the beginning of the GCODE output file.
-    values["PREAMBLE"] = """G53 G00 G17
+    PREAMBLE = """G53 G00 G17
 """
-
-    AXIS_PRECISION = 4
-    FEED_PRECISION = 1
-    SPINDLE_DECIMALS = 0
-
-    # gCode header with information about CAD-software, post-processor
-    # and date/time
-    if FreeCAD.ActiveDocument:
-        cam_file = FreeCAD.ActiveDocument.FileName
-    else:
-        cam_file = "<None>"
-
-    HEADER = """;Exported by FreeCAD
-    ;Post Processor: {}
-    ;CAM file: {}
-    ;Output Time: {}
-    """.format(
-        __name__, cam_file, str(datetime.datetime.now())
-    )
-
+    SAFETYBLOCK = """G90 G80 G40 G49
+"""
+    values["SPINDLE_DECIMALS"] = 0
+    # Tool Change commands will be inserted before a tool change
+    values["TOOL_CHANGE"] = """"""
     # spindle off,height offset canceled,spindle retracted
     # (M25 is a centroid command to retract spindle)
     TOOLRETURN = """M5
-    M25
-    G49 H0
-    """
+M25
+G49 H0
+"""
+    # ZAXISRETURN = """G91 G28 X0 Z0
+    # G90
+    # """
 
-    ZAXISRETURN = """G91 G28 X0 Z0
-    G90
-    """
+    processArguments(values, argstring)
 
-    SAFETYBLOCK = """G90 G80 G40 G49
-    """
-
-    # Tool Change commands will be inserted before a tool change
-    TOOL_CHANGE = """"""
-
-    processArguments(argstring)
     for i in objectslist:
         print(i.Name)
 
@@ -147,48 +273,59 @@ def export(objectslist, filename, argstring):
 
     # write header
     if values["OUTPUT_HEADER"]:
-        gcode += HEADER
+        # gCode header with information about CAD-software, post-processor
+        # and date/time
+        if FreeCAD.ActiveDocument:
+            cam_file = FreeCAD.ActiveDocument.FileName
+        else:
+            cam_file = "<None>"
+        header = """;Exported by FreeCAD
+;Post Processor: {}
+;CAM file: {}
+;Output Time: {}
+""".format(
+            __name__, cam_file, str(datetime.datetime.now())
+        )
+        gcode += header
 
     gcode += SAFETYBLOCK
 
     # Write the preamble
-    if OUTPUT_COMMENTS:
+    if values["OUTPUT_COMMENTS"]:
         for item in objectslist:
-            if hasattr(item, "Proxy") and isinstance(
-                item.Proxy, PathToolController.ToolController
-            ):
+            if hasattr(item, "Proxy") and isinstance(item.Proxy, PathToolController.ToolController):
                 gcode += ";T{}={}\n".format(item.ToolNumber, item.Name)
-        gcode += linenumber() + ";begin preamble\n"
+        gcode += PostUtils.linenumber(values) + ";begin preamble\n"
     for line in PREAMBLE.splitlines(True):
-        gcode += linenumber() + line
+        gcode += PostUtils.linenumber(values) + line
 
-    gcode += linenumber() + UNITS + "\n"
+    gcode += PostUtils.linenumber(values) + UNITS + "\n"
 
     for obj in objectslist:
         # do the pre_op
-        if OUTPUT_COMMENTS:
-            gcode += linenumber() + ";begin operation\n"
-        for line in PRE_OPERATION.splitlines(True):
-            gcode += linenumber() + line
+        if values["OUTPUT_COMMENTS"]:
+            gcode += PostUtils.linenumber(values) + ";begin operation\n"
+        for line in values["PRE_OPERATION"].splitlines(True):
+            gcode += PostUtils.linenumber(values) + line
 
-        gcode += parse(obj)
+        gcode += parse(values, obj)
 
         # do the post_op
-        if OUTPUT_COMMENTS:
-            gcode += linenumber() + ";end operation: %s\n" % obj.Label
-        for line in POST_OPERATION.splitlines(True):
-            gcode += linenumber() + line
+        if values["OUTPUT_COMMENTS"]:
+            gcode += PostUtils.linenumber(values) + ";end operation: %s\n" % obj.Label
+        for line in values["POST_OPERATION"].splitlines(True):
+            gcode += PostUtils.linenumber(values) + line
 
-    # do the post_amble
+    # do the postamble
 
-    if OUTPUT_COMMENTS:
+    if values["OUTPUT_COMMENTS"]:
         gcode += ";begin postamble\n"
     for line in TOOLRETURN.splitlines(True):
-        gcode += linenumber() + line
+        gcode += PostUtils.linenumber(values) + line
     for line in SAFETYBLOCK.splitlines(True):
-        gcode += linenumber() + line
+        gcode += PostUtils.linenumber(values) + line
     for line in POSTAMBLE.splitlines(True):
-        gcode += linenumber() + line
+        gcode += PostUtils.linenumber(values) + line
 
     if FreeCAD.GuiUp and values["SHOW_EDITOR"]:
         dia = PostUtils.GCodeEditorDialog()
@@ -209,121 +346,3 @@ def export(objectslist, filename, argstring):
         gfile.close()
 
     return final
-
-
-def linenumber():
-    global LINENR
-    if OUTPUT_LINE_NUMBERS is True:
-        LINENR += 10
-        return "N" + str(LINENR) + " "
-    return ""
-
-
-def parse(pathobj):
-    out = ""
-    lastcommand = None
-    axis_precision_string = "." + str(AXIS_PRECISION) + "f"
-    feed_precision_string = "." + str(FEED_PRECISION) + "f"
-    # params = ['X','Y','Z','A','B','I','J','K','F','S'] #This list control
-    # the order of parameters
-    # centroid doesn't want K properties on XY plane  Arcs need work.
-    params = ["X", "Y", "Z", "A", "B", "I", "J", "F", "S", "T", "Q", "R", "L", "H"]
-
-    if hasattr(pathobj, "Group"):  # We have a compound or project.
-        # if OUTPUT_COMMENTS:
-        #     out += linenumber() + "(compound: " + pathobj.Label + ")\n"
-        for p in pathobj.Group:
-            out += parse(p)
-        return out
-    else:  # parsing simple path
-
-        # groups might contain non-path things like stock.
-        if not hasattr(pathobj, "Path"):
-            return out
-
-        # if OUTPUT_COMMENTS:
-        #     out += linenumber() + "(" + pathobj.Label + ")\n"
-
-        for c in pathobj.Path.Commands:
-            commandlist = []  # list of elements in the command, code and params.
-            command = c.Name  # command M or G code or comment string
-
-            if command[0] == "(":
-                command = PostUtils.fcoms(command, values["COMMENT_SYMBOL"])
-
-            commandlist.append(command)
-            # if modal: only print the command if it is not the same as the
-            # last one
-            if MODAL is True:
-                if command == lastcommand:
-                    commandlist.pop(0)
-
-            # Now add the remaining parameters in order
-            for param in params:
-                if param in c.Parameters:
-                    if param == "F":
-                        if c.Name not in [
-                            "G0",
-                            "G00",
-                        ]:  # centroid doesn't use rapid speeds
-                            speed = Units.Quantity(
-                                c.Parameters["F"], FreeCAD.Units.Velocity
-                            )
-                            commandlist.append(
-                                param
-                                + format(
-                                    float(speed.getValueAs(UNIT_SPEED_FORMAT)),
-                                    feed_precision_string,
-                                )
-                            )
-                    elif param == "H":
-                        commandlist.append(param + str(int(c.Parameters["H"])))
-                    elif param == "S":
-                        commandlist.append(
-                            param
-                            + PostUtils.fmt(c.Parameters["S"], SPINDLE_DECIMALS, "G21")
-                        )
-                    elif param == "T":
-                        commandlist.append(param + str(int(c.Parameters["T"])))
-                    else:
-                        pos = Units.Quantity(c.Parameters[param], FreeCAD.Units.Length)
-                        commandlist.append(
-                            param
-                            + format(
-                                float(pos.getValueAs(UNIT_FORMAT)),
-                                axis_precision_string,
-                            )
-                        )
-            outstr = str(commandlist)
-            outstr = outstr.replace("[", "")
-            outstr = outstr.replace("]", "")
-            outstr = outstr.replace("'", "")
-            outstr = outstr.replace(",", "")
-
-            # store the latest command
-            lastcommand = command
-
-            # Check for Tool Change:
-            if command == "M6":
-                # if OUTPUT_COMMENTS:
-                #     out += linenumber() + "(begin toolchange)\n"
-                for line in TOOL_CHANGE.splitlines(True):
-                    out += linenumber() + line
-
-            # if command == "message":
-            #     if OUTPUT_COMMENTS is False:
-            #         out = []
-            #     else:
-            #         commandlist.pop(0)  # remove the command
-
-            # prepend a line number and append a newline
-            if len(commandlist) >= 1:
-                if OUTPUT_LINE_NUMBERS:
-                    commandlist.insert(0, (linenumber()))
-
-                # append the line to the final output
-                for w in commandlist:
-                    out += w + COMMAND_SPACE
-                out = out.strip() + "\n"
-
-        return out

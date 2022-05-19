@@ -37,6 +37,31 @@ from PathScripts import PostUtils
 if open.__module__ in ["__builtin__", "io"]:
     pythonopen = open
 
+#
+# The following variables need to be global variables
+# to keep the PathPostProcessor.load method happy:
+#
+#    CORNER_MAX
+#    CORNER_MIN
+#    MACHINE_NAME
+#    TOOLTIP
+#    TOOLTIP_ARGS
+#    UNITS
+#
+#    POSTAMBLE and PREAMBLE need to be defined before TOOLTIP_ARGS
+#    can be defined, so they end up being global variables also.
+#
+CORNER_MAX = {"x": 500, "y": 300, "z": 300}
+CORNER_MIN = {"x": 0, "y": 0, "z": 0}
+MACHINE_NAME = "LinuxCNC"
+# Postamble text will appear following the last operation.
+POSTAMBLE = """M05
+G17 G54 G90 G80 G40
+M2
+"""
+# Preamble text will appear at the beginning of the GCODE output file.
+PREAMBLE = """G17 G54 G40 G49 G80 G90
+"""
 TOOLTIP = """This is a postprocessor file for the Path workbench. It is used to
 take a pseudo-gcode fragment outputted by a Path object, and output
 real GCode suitable for a linuxcnc 3 axis mill. This postprocessor, once placed
@@ -47,46 +72,49 @@ import linuxcnc_post
 linuxcnc_post.export(object,"/path/to/file.ncc","")
 """
 
+parser = argparse.ArgumentParser(prog=MACHINE_NAME, add_help=False)
+parser.add_argument("--no-header", action="store_true", help="suppress header output")
+parser.add_argument("--no-comments", action="store_true", help="suppress comment output")
+parser.add_argument("--line-numbers", action="store_true", help="prefix with line numbers")
+parser.add_argument(
+    "--no-show-editor",
+    action="store_true",
+    help="don't pop up editor before writing output",
+)
+parser.add_argument("--precision", default="3", help="number of digits of precision, default=3")
+parser.add_argument(
+    "--preamble",
+    help='set commands to be issued before the first command, default="' + PREAMBLE + '"',
+)
+parser.add_argument(
+    "--postamble",
+    help='set commands to be issued after the last command, default="' + POSTAMBLE + '"',
+)
+parser.add_argument(
+    "--inches", action="store_true", help="Convert output for US imperial mode (G20)"
+)
+parser.add_argument(
+    "--modal",
+    action="store_true",
+    help="Output the Same G-command Name USE NonModal Mode",
+)
+parser.add_argument("--axis-modal", action="store_true", help="Output the Same Axis Value Mode")
+parser.add_argument(
+    "--no-tlo",
+    action="store_true",
+    help="suppress tool length offset (G43) following tool changes",
+)
+TOOLTIP_ARGS = parser.format_help()
+# G21 for metric, G20 for US standard
+UNITS = "G21"
+
+
 def processArguments(values, argstring):
     """Process the arguments to the postprocessor."""
-    parser = argparse.ArgumentParser(prog=values["MACHINE_NAME"], add_help=False)
-    parser.add_argument("--no-header", action="store_true", help="suppress header output")
-    parser.add_argument("--no-comments", action="store_true", help="suppress comment output")
-    parser.add_argument("--line-numbers", action="store_true", help="prefix with line numbers")
-    parser.add_argument(
-        "--no-show-editor",
-        action="store_true",
-        help="don't pop up editor before writing output",
-    )
-    parser.add_argument("--precision", default="3", help="number of digits of precision, default=3")
-    parser.add_argument(
-        "--preamble",
-        help='set commands to be issued before the first command, default="'
-        + values["PREAMBLE"]
-        + '"',
-    )
-    parser.add_argument(
-        "--postamble",
-        help='set commands to be issued after the last command, default="'
-        + values["POSTAMBLE"]
-        + '"',
-    )
-    parser.add_argument(
-        "--inches", action="store_true", help="Convert output for US imperial mode (G20)"
-    )
-    parser.add_argument(
-        "--modal",
-        action="store_true",
-        help="Output the Same G-command Name USE NonModal Mode",
-    )
-    parser.add_argument("--axis-modal", action="store_true", help="Output the Same Axis Value Mode")
-    parser.add_argument(
-        "--no-tlo",
-        action="store_true",
-        help="suppress tool length offset (G43) following tool changes",
-    )
-
-    values["TOOLTIP_ARGS"] = parser.format_help()
+    #
+    global POSTAMBLE
+    global PREAMBLE
+    global UNITS
 
     try:
         args = parser.parse_args(shlex.split(argstring))
@@ -100,11 +128,11 @@ def processArguments(values, argstring):
             values["SHOW_EDITOR"] = False
         values["PRECISION"] = args.precision
         if args.preamble is not None:
-            values["PREAMBLE"] = args.preamble
+            PREAMBLE = args.preamble
         if args.postamble is not None:
-            values["POSTAMBLE"] = args.postamble
+            POSTAMBLE = args.postamble
         if args.inches:
-            values["UNITS"] = "G20"
+            UNITS = "G20"
             values["UNIT_SPEED_FORMAT"] = "in/min"
             values["UNIT_FORMAT"] = "in"
             values["PRECISION"] = 4
@@ -252,10 +280,36 @@ def parse(values, pathobj):
 def export(objectslist, filename, argstring):
     """Postprocess the objects in objectslist to filename."""
     #
+    global POSTABLE
+    global PREAMBLE
+    global UNITS
+    #
     # Holds various values that are used throughout the postprocessor code.
     #
     values = {}
     PostUtils.init_values(values)
+    values["COMMENT_SYMBOL"] = "("
+    # the order of parameters
+    # linuxcnc doesn't want K properties on XY plane; Arcs need work.
+    values["PARAMETER_ORDER"] = [
+        "X",
+        "Y",
+        "Z",
+        "A",
+        "B",
+        "C",
+        "I",
+        "J",
+        "F",
+        "S",
+        "T",
+        "Q",
+        "R",
+        "L",
+        "H",
+        "D",
+        "P",
+    ]
 
     if not processArguments(values, argstring):
         return None
@@ -287,9 +341,9 @@ def export(objectslist, filename, argstring):
     if values["OUTPUT_COMMENTS"]:
         comment = PostUtils.create_comment("(begin preamble)\n", values["COMMENT_SYMBOL"])
         gcode += PostUtils.linenumber(values) + comment
-    for line in values["PREAMBLE"].splitlines(False):
+    for line in PREAMBLE.splitlines(False):
         gcode += PostUtils.linenumber(values) + line + "\n"
-    gcode += PostUtils.linenumber(values) + values["UNITS"] + "\n"
+    gcode += PostUtils.linenumber(values) + UNITS + "\n"
 
     for obj in objectslist:
 
@@ -359,7 +413,7 @@ def export(objectslist, filename, argstring):
     if values["OUTPUT_COMMENTS"]:
         comment = PostUtils.create_comment("(begin postamble)\n", values["COMMENT_SYMBOL"])
         gcode += comment
-    for line in values["POSTAMBLE"].splitlines(True):
+    for line in POSTAMBLE.splitlines(True):
         gcode += PostUtils.linenumber(values) + line
 
     if FreeCAD.GuiUp and values["SHOW_EDITOR"]:
