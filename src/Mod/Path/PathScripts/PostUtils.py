@@ -29,6 +29,7 @@ These are common functions and classes for creating custom post processors.
 from PySide import QtCore, QtGui
 
 import FreeCAD
+from FreeCAD import Units
 
 import Path
 import Part
@@ -245,14 +246,12 @@ def init_values(values):
     values["POST_OPERATION"] = """"""
     # Pre operation text will be inserted before every operation
     values["PRE_OPERATION"] = """"""
-    values["PRECISION"] = 3
     values["SHOW_EDITOR"] = True
+    values["SPINDLE_DECIMALS"] = 0
     # Tool Change commands will be inserted before a tool change
     values["TOOL_CHANGE"] = """"""
     values["UNIT_FORMAT"] = "mm"
     values["UNIT_SPEED_FORMAT"] = "mm/min"
-    # if true G43 will be output following tool changes
-    values["USE_TLO"] = True
 
 
 def linenumber(values):
@@ -268,3 +267,140 @@ def create_comment(comment_string, comment_symbol):
     if comment_symbol != "(":
         comment_string = fcoms(comment_string, comment_symbol)
     return comment_string
+
+
+def parse(values, pathobj):
+    """Parse a Path."""
+    out = ""
+    lastcommand = None
+    axis_precision_string = "." + str(values["AXIS_PRECISION"]) + "f"
+    feed_precision_string = "." + str(values["FEED_PRECISION"]) + "f"
+
+    currLocation = {}  # keep track for no doubles
+    firstmove = Path.Command("G0", {"X": -1, "Y": -1, "Z": -1, "F": 0.0})
+    currLocation.update(firstmove.Parameters)  # set First location Parameters
+
+    if hasattr(pathobj, "Group"):  # We have a compound or project.
+        # if values["OUTPUT_COMMENTS"]:
+        #     comment = create_comment(
+        #         "(compound: " + pathobj.Label + ")\n", values["COMMENT_SYMBOL"]
+        #     )
+        #   out += linenumber(values) + comment
+        for p in pathobj.Group:
+            out += parse(values, p)
+        return out
+    else:  # parsing simple path
+
+        # groups might contain non-path things like stock.
+        if not hasattr(pathobj, "Path"):
+            return out
+
+        # if values["OUTPUT_COMMENTS"]:
+        #     comment = create_comment(
+        #         "(" + pathobj.Label + ")\n", values["COMMENT_SYMBOL"]
+        #     )
+        #     out += linenumber(values) + comment
+
+        for c in pathobj.Path.Commands:
+
+            # List of elements in the command, code, and params.
+            outstring = []
+            # command M or G code or comment string
+            command = c.Name
+            if command[0] == "(":
+                if values["OUTPUT_COMMENTS"]:
+                    command = fcoms(command, values["COMMENT_SYMBOL"])
+                else:
+                    continue
+            outstring.append(command)
+
+            # if modal: suppress the command if it is the same as the last one
+            if values["MODAL"]:
+                if command == lastcommand:
+                    outstring.pop(0)
+
+            # Now add the remaining parameters in order
+            for param in values["PARAMETER_ORDER"]:
+                if param in c.Parameters:
+                    if param == "F" and (
+                        currLocation[param] != c.Parameters[param] or values["OUTPUT_DOUBLES"]
+                    ):
+                        # centroid and linuxcnc doesn't use rapid speeds
+                        if c.Name not in [
+                            "G0",
+                            "G00",
+                        ]:
+                            speed = Units.Quantity(c.Parameters["F"], FreeCAD.Units.Velocity)
+                            if speed.getValueAs(values["UNIT_SPEED_FORMAT"]) > 0.0:
+                                outstring.append(
+                                    param
+                                    + format(
+                                        float(speed.getValueAs(values["UNIT_SPEED_FORMAT"])),
+                                        feed_precision_string,
+                                    )
+                                )
+                        else:
+                            continue
+                    elif param == "T":
+                        outstring.append(param + str(int(c.Parameters["T"])))
+                    elif param == "H":
+                        outstring.append(param + str(int(c.Parameters["H"])))
+                    elif param == "D":
+                        outstring.append(param + str(int(c.Parameters["D"])))
+                    elif param == "S":
+                        outstring.append(
+                            param + fmt(c.Parameters["S"], values["SPINDLE_DECIMALS"], "G21")
+                        )
+                    else:
+                        if (
+                            (not values["OUTPUT_DOUBLES"])
+                            and (param in currLocation)
+                            and (currLocation[param] == c.Parameters[param])
+                        ):
+                            continue
+                        else:
+                            pos = Units.Quantity(c.Parameters[param], FreeCAD.Units.Length)
+                            outstring.append(
+                                param
+                                + format(
+                                    float(pos.getValueAs(values["UNIT_FORMAT"])),
+                                    axis_precision_string,
+                                )
+                            )
+
+            # store the latest command
+            lastcommand = command
+            currLocation.update(c.Parameters)
+
+            # Check for Tool Change:
+            if command == "M6":
+                if values["STOP_SPINDLE_FOR_TOOL_CHANGE"]:
+                    # stop the spindle
+                    out += linenumber(values) + "M5\n"
+                for line in values["TOOL_CHANGE"].splitlines(True):
+                    out += linenumber(values) + line
+
+                # add height offset
+                if values["USE_TLO"]:
+                    tool_height = "\nG43 H" + str(int(c.Parameters["T"]))
+                    outstring.append(tool_height)
+
+            if command == "message" and values["REMOVE_MESSAGES"]:
+                if values["OUTPUT_COMMENTS"] is False:
+                    out = []
+                else:
+                    outstring.pop(0)  # remove the command
+
+            # prepend a line number and append a newline
+            if len(outstring) >= 1:
+                if values["OUTPUT_LINE_NUMBERS"]:
+                    outstring.insert(0, (linenumber(values)))
+
+                # append the line to the final output
+                for w in outstring:
+                    out += w + values["COMMAND_SPACE"]
+                # Note: Do *not* strip `out`, since that forces the allocation
+                # of a contiguous string & thus quadratic complexity.
+                out += "\n"
+
+        return out

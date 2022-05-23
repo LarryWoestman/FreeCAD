@@ -29,8 +29,6 @@ import datetime
 import shlex
 
 import FreeCAD
-from FreeCAD import Units
-import Path
 from PathScripts import PostUtils
 
 # to distinguish python built-in open function from the one declared below
@@ -126,7 +124,8 @@ def processArguments(values, argstring):
             values["OUTPUT_LINE_NUMBERS"] = True
         if args.no_show_editor:
             values["SHOW_EDITOR"] = False
-        values["PRECISION"] = args.precision
+        values["AXIS_PRECISION"] = args.precision
+        values["FEED_PRECISION"] = args.precision
         if args.preamble is not None:
             PREAMBLE = args.preamble
         if args.postamble is not None:
@@ -135,7 +134,8 @@ def processArguments(values, argstring):
             UNITS = "G20"
             values["UNIT_SPEED_FORMAT"] = "in/min"
             values["UNIT_FORMAT"] = "in"
-            values["PRECISION"] = 4
+            values["AXIS_PRECISION"] = 4
+            values["FEED_PRECISION"] = 4
         if args.modal:
             values["MODAL"] = True
         if args.no_tlo:
@@ -149,134 +149,6 @@ def processArguments(values, argstring):
     return True
 
 
-def parse(values, pathobj):
-    """Parse a Path."""
-    out = ""
-    lastcommand = None
-    precision_string = "." + str(values["PRECISION"]) + "f"
-    currLocation = {}  # keep track for no doubles
-
-    firstmove = Path.Command("G0", {"X": -1, "Y": -1, "Z": -1, "F": 0.0})
-    currLocation.update(firstmove.Parameters)  # set First location Parameters
-
-    if hasattr(pathobj, "Group"):  # We have a compound or project.
-        # if values["OUTPUT_COMMENTS"]:
-        #     comment = PostUtils.create_comment(
-        #         "(compound: " + pathobj.Label + ")\n", values["COMMENT_SYMBOL"]
-        #     )
-        #   out += PostUtils.linenumber(values) + comment
-        for p in pathobj.Group:
-            out += parse(values, p)
-        return out
-    else:  # parsing simple path
-
-        # groups might contain non-path things like stock.
-        if not hasattr(pathobj, "Path"):
-            return out
-
-        # if values["OUTPUT_COMMENTS"]:
-        #     comment = PostUtils.create_comment(
-        #         "(" + pathobj.Label + ")\n", values["COMMENT_SYMBOL"]
-        #     )
-        #     out += PostUtils.linenumber(values) + comment
-
-        for c in pathobj.Path.Commands:
-
-            outstring = []
-            command = c.Name
-            outstring.append(command)
-
-            # if modal: suppress the command if it is the same as the last one
-            if values["MODAL"]:
-                if command == lastcommand:
-                    outstring.pop(0)
-
-            if c.Name[0] == "(" and not values["OUTPUT_COMMENTS"]:  # command is a comment
-                continue
-
-            # Now add the remaining parameters in order
-            for param in values["PARAMETER_ORDER"]:
-                if param in c.Parameters:
-                    if param == "F" and (
-                        currLocation[param] != c.Parameters[param] or values["OUTPUT_DOUBLES"]
-                    ):
-                        # linuxcnc doesn't use rapid speeds
-                        if c.Name not in [
-                            "G0",
-                            "G00",
-                        ]:
-                            speed = Units.Quantity(c.Parameters["F"], FreeCAD.Units.Velocity)
-                            if speed.getValueAs(values["UNIT_SPEED_FORMAT"]) > 0.0:
-                                outstring.append(
-                                    param
-                                    + format(
-                                        float(speed.getValueAs(values["UNIT_SPEED_FORMAT"])),
-                                        precision_string,
-                                    )
-                                )
-                        else:
-                            continue
-                    elif param == "T":
-                        outstring.append(param + str(int(c.Parameters["T"])))
-                    elif param == "H":
-                        outstring.append(param + str(int(c.Parameters["H"])))
-                    elif param == "D":
-                        outstring.append(param + str(int(c.Parameters["D"])))
-                    elif param == "S":
-                        outstring.append(param + str(int(c.Parameters["S"])))
-                    else:
-                        if (
-                            (not values["OUTPUT_DOUBLES"])
-                            and (param in currLocation)
-                            and (currLocation[param] == c.Parameters[param])
-                        ):
-                            continue
-                        else:
-                            pos = Units.Quantity(c.Parameters[param], FreeCAD.Units.Length)
-                            outstring.append(
-                                param
-                                + format(
-                                    float(pos.getValueAs(values["UNIT_FORMAT"])), precision_string
-                                )
-                            )
-
-            # store the latest command
-            lastcommand = command
-            currLocation.update(c.Parameters)
-
-            # Check for Tool Change:
-            if command == "M6":
-                # stop the spindle
-                out += PostUtils.linenumber(values) + "M5\n"
-                for line in values["TOOL_CHANGE"].splitlines(True):
-                    out += PostUtils.linenumber(values) + line
-
-                # add height offset
-                if values["USE_TLO"]:
-                    tool_height = "\nG43 H" + str(int(c.Parameters["T"]))
-                    outstring.append(tool_height)
-
-            if command == "message":
-                if values["OUTPUT_COMMENTS"] is False:
-                    out = []
-                else:
-                    outstring.pop(0)  # remove the command
-
-            # prepend a line number and append a newline
-            if len(outstring) >= 1:
-                if values["OUTPUT_LINE_NUMBERS"]:
-                    outstring.insert(0, (PostUtils.linenumber(values)))
-
-                # append the line to the final output
-                for w in outstring:
-                    out += w + values["COMMAND_SPACE"]
-                # Note: Do *not* strip `out`, since that forces the allocation
-                # of a contiguous string & thus quadratic complexity.
-                out += "\n"
-
-        return out
-
-
 def export(objectslist, filename, argstring):
     """Postprocess the objects in objectslist to filename."""
     #
@@ -288,7 +160,9 @@ def export(objectslist, filename, argstring):
     #
     values = {}
     PostUtils.init_values(values)
+    values["AXIS_PRECISION"] = 3
     values["COMMENT_SYMBOL"] = "("
+    values["FEED_PRECISION"] = 3
     # the order of parameters
     # linuxcnc doesn't want K properties on XY plane; Arcs need work.
     values["PARAMETER_ORDER"] = [
@@ -310,6 +184,10 @@ def export(objectslist, filename, argstring):
         "D",
         "P",
     ]
+    values["REMOVE_MESSAGES"] = True
+    values["STOP_SPINDLE_FOR_TOOL_CHANGE"] = True
+    # if true G43 will be output following tool changes
+    values["USE_TLO"] = True
 
     if not processArguments(values, argstring):
         return None
@@ -389,7 +267,7 @@ def export(objectslist, filename, argstring):
             gcode += PostUtils.linenumber(values) + "M7" + "\n"
 
         # process the operation gcode
-        gcode += parse(values, obj)
+        gcode += PostUtils.parse(values, obj)
 
         # do the post_op
         if values["OUTPUT_COMMENTS"]:

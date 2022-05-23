@@ -29,7 +29,6 @@ from __future__ import print_function
 import datetime
 
 import FreeCAD
-from FreeCAD import Units
 from PathScripts import PathToolController
 from PathScripts import PostUtils
 
@@ -76,6 +75,7 @@ if open.__module__ in ["__builtin__", "io"]:
 
 
 def processArguments(values, argstring):
+    """Process the arguments to the postprocessor."""
     #
     global UNITS
 
@@ -104,111 +104,6 @@ def processArguments(values, argstring):
             UNITS = "G20"
             values["UNIT_SPEED_FORMAT"] = "in/min"
             values["UNIT_FORMAT"] = "in"
-
-
-def parse(values, pathobj):
-    out = ""
-    lastcommand = None
-    axis_precision_string = "." + str(values["AXIS_PRECISION"]) + "f"
-    feed_precision_string = "." + str(values["FEED_PRECISION"]) + "f"
-
-    if hasattr(pathobj, "Group"):  # We have a compound or project.
-        # if values["OUTPUT_COMMENTS"]:
-        #     out += PostUtils.linenumber(values) + "(compound: " + pathobj.Label + ")\n"
-        for p in pathobj.Group:
-            out += parse(values, p)
-        return out
-    else:  # parsing simple path
-
-        # groups might contain non-path things like stock.
-        if not hasattr(pathobj, "Path"):
-            return out
-
-        # if values["OUTPUT_COMMENTS"]:
-        #     out += PostUtils.linenumber(values) + "(" + pathobj.Label + ")\n"
-
-        for c in pathobj.Path.Commands:
-            commandlist = []  # list of elements in the command, code and params.
-            command = c.Name  # command M or G code or comment string
-
-            if command[0] == "(":
-                command = PostUtils.fcoms(command, values["COMMENT_SYMBOL"])
-
-            commandlist.append(command)
-            # if modal: only print the command if it is not the same as the
-            # last one
-            if values["MODAL"] is True:
-                if command == lastcommand:
-                    commandlist.pop(0)
-
-            # Now add the remaining parameters in order
-            for param in values["PARAMETER_ORDER"]:
-                if param in c.Parameters:
-                    if param == "F":
-                        # centroid doesn't use rapid speeds
-                        if c.Name not in [
-                            "G0",
-                            "G00",
-                        ]:
-                            speed = Units.Quantity(c.Parameters["F"], FreeCAD.Units.Velocity)
-                            commandlist.append(
-                                param
-                                + format(
-                                    float(speed.getValueAs(values["UNIT_SPEED_FORMAT"])),
-                                    feed_precision_string,
-                                )
-                            )
-                    elif param == "H":
-                        commandlist.append(param + str(int(c.Parameters["H"])))
-                    elif param == "S":
-                        commandlist.append(
-                            param
-                            + PostUtils.fmt(c.Parameters["S"], values["SPINDLE_DECIMALS"], "G21")
-                        )
-                    elif param == "T":
-                        commandlist.append(param + str(int(c.Parameters["T"])))
-                    else:
-                        pos = Units.Quantity(c.Parameters[param], FreeCAD.Units.Length)
-                        commandlist.append(
-                            param
-                            + format(
-                                float(pos.getValueAs(values["UNIT_FORMAT"])),
-                                axis_precision_string,
-                            )
-                        )
-            outstr = str(commandlist)
-            outstr = outstr.replace("[", "")
-            outstr = outstr.replace("]", "")
-            outstr = outstr.replace("'", "")
-            outstr = outstr.replace(",", "")
-
-            # store the latest command
-            lastcommand = command
-
-            # Check for Tool Change:
-            if command == "M6":
-                # if values["OUTPUT_COMMENTS"]:
-                #     out += PostUtils.linenumber(values) + "(begin toolchange)\n"
-                for line in values["TOOL_CHANGE"].splitlines(True):
-                    out += PostUtils.linenumber(values) + line
-
-            # if command == "message":
-            #     if values["OUTPUT_COMMENTS"] is False:
-            #         out = []
-            #     else:
-            #         commandlist.pop(0)  # remove the command
-
-            # prepend a line number and append a newline
-            if len(commandlist) >= 1:
-                if values["OUTPUT_LINE_NUMBERS"]:
-                    commandlist.insert(0, (PostUtils.linenumber(values)))
-
-                # append the line to the final output
-                for w in commandlist:
-                    out += w + values["COMMAND_SPACE"]
-                out = out.strip() + "\n"
-
-        return out
 
 
 def export(objectslist, filename, argstring):
@@ -248,17 +143,18 @@ def export(objectslist, filename, argstring):
     # Preamble text will appear at the beginning of the GCODE output file.
     PREAMBLE = """G53 G00 G17
 """
+    values["REMOVE_MESSAGES"] = False
     SAFETYBLOCK = """G90 G80 G40 G49
 """
-    values["SPINDLE_DECIMALS"] = 0
-    # Tool Change commands will be inserted before a tool change
-    values["TOOL_CHANGE"] = """"""
+    values["STOP_SPINDLE_FOR_TOOL_CHANGE"] = False
     # spindle off,height offset canceled,spindle retracted
     # (M25 is a centroid command to retract spindle)
     TOOLRETURN = """M5
 M25
 G49 H0
 """
+    # if true G43 will be output following tool changes
+    values["USE_TLO"] = False
     # ZAXISRETURN = """G91 G28 X0 Z0
     # G90
     # """
@@ -308,7 +204,7 @@ G49 H0
         for line in values["PRE_OPERATION"].splitlines(True):
             gcode += PostUtils.linenumber(values) + line
 
-        gcode += parse(values, obj)
+        gcode += PostUtils.parse(values, obj)
 
         # do the post_op
         if values["OUTPUT_COMMENTS"]:
