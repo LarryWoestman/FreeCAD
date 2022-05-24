@@ -149,7 +149,11 @@ class TestPathPost(unittest.TestCase):
                         msg = "".join(
                             difflib.ndiff(gcode.splitlines(True), reference_gcode.splitlines(True))
                         )
-                        self.fail(postprocessor_id + " output doesn't match: " + msg)
+                        self.fail(
+                            os.path.basename(output_filename)
+                            + " output doesn't match:\n"
+                            + msg
+                        )
                     if not KEEP_DEBUG_OUTPUT:
                         os.remove(output_filename)
                 self.subpart = 1
