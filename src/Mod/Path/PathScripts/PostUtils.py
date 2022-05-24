@@ -309,7 +309,8 @@ def parse(values, pathobj):
             command = c.Name
             if command[0] == "(":
                 if values["OUTPUT_COMMENTS"]:
-                    command = fcoms(command, values["COMMENT_SYMBOL"])
+                    if values["COMMENT_SYMBOL"] != "(":
+                        command = fcoms(command, values["COMMENT_SYMBOL"])
                 else:
                     continue
             outstring.append(command)
@@ -379,7 +380,6 @@ def parse(values, pathobj):
                     out += linenumber(values) + "M5\n"
                 for line in values["TOOL_CHANGE"].splitlines(True):
                     out += linenumber(values) + line
-
                 # add height offset
                 if values["USE_TLO"]:
                     tool_height = "\nG43 H" + str(int(c.Parameters["T"]))
@@ -397,8 +397,9 @@ def parse(values, pathobj):
                     outstring.insert(0, (linenumber(values)))
 
                 # append the line to the final output
-                for w in outstring:
-                    out += w + values["COMMAND_SPACE"]
+                out += values["COMMAND_SPACE"].join(outstring)
+                # for w in outstring:
+                #    out += w + values["COMMAND_SPACE"]
                 # Note: Do *not* strip `out`, since that forces the allocation
                 # of a contiguous string & thus quadratic complexity.
                 out += "\n"
