@@ -94,10 +94,11 @@ class TestPathPost(unittest.TestCase):
         #
         postprocessors_to_test = (
             # "centroid",
+            # "grbl",
             # "linuxcnc",
             # "refactored_centroid",
             # "refactored_linuxcnc",
-            "grbl",
+            "refactored_grbl",
         )
         #
         # Enough of the path to where the tests are stored so that
