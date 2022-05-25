@@ -25,6 +25,7 @@
 """
 These are common functions and classes for creating custom post processors.
 """
+import datetime
 
 from PySide import QtCore, QtGui
 
@@ -35,12 +36,17 @@ import Path
 import Part
 
 from PathMachineState import MachineState
+from PathScripts import PathToolController
 from PathScripts.PathGeom import CmdMoveArc, edgeForCmd, cmdsForEdge
 
 translate = FreeCAD.Qt.translate
 FreeCADGui = None
 if FreeCAD.GuiUp:
     import FreeCADGui
+
+# to distinguish python built-in open function from the one declared below
+if open.__module__ in ["__builtin__", "io"]:
+    pythonopen = open
 
 
 class GCodeHighlighter(QtGui.QSyntaxHighlighter):
@@ -398,10 +404,166 @@ def parse(values, pathobj):
 
                 # append the line to the final output
                 out += values["COMMAND_SPACE"].join(outstring)
-                # for w in outstring:
-                #    out += w + values["COMMAND_SPACE"]
                 # Note: Do *not* strip `out`, since that forces the allocation
                 # of a contiguous string & thus quadratic complexity.
                 out += "\n"
 
         return out
+
+
+def export_common(values, objectslist, filename):
+    """Do the common parts of postprocessing the objects in objectslist to filename."""
+    #
+    for obj in objectslist:
+        if not hasattr(obj, "Path"):
+            print(
+                "The object " + obj.Name + " is not a path. Please select only path and Compounds."
+            )
+            return None
+
+    # for obj in objectslist:
+    #    print(obj.Name)
+
+    print("postprocessing...")
+    gcode = ""
+
+    # write header
+    if values["OUTPUT_HEADER"]:
+        comment = create_comment("(Exported by FreeCAD)\n", values["COMMENT_SYMBOL"])
+        gcode += linenumber(values) + comment
+        comment = create_comment("(Post Processor: " + __name__ + ")\n", values["COMMENT_SYMBOL"])
+        gcode += linenumber(values) + comment
+        if FreeCAD.ActiveDocument:
+            cam_file = FreeCAD.ActiveDocument.FileName
+        else:
+            cam_file = "<None>"
+        comment = create_comment("(Cam File: " + cam_file + ")\n", values["COMMENT_SYMBOL"])
+        gcode += linenumber(values) + comment
+        comment = create_comment(
+            "(Output Time:" + str(datetime.datetime.now()) + ")\n", values["COMMENT_SYMBOL"]
+        )
+        gcode += linenumber(values) + comment
+
+    if values["SAFETYBLOCK"]:
+        gcode += values["SAFETYBLOCK"]
+
+    # Write the preamble
+    if values["OUTPUT_COMMENTS"]:
+        if values["LIST_TOOLS_IN_PREAMBLE"]:
+            for item in objectslist:
+                if hasattr(item, "Proxy") and isinstance(
+                    item.Proxy, PathToolController.ToolController
+                ):
+                    comment = create_comment(
+                        "(T{}={})\n".format(item.ToolNumber, item.Name), values["COMMENT_SYMBOL"]
+                    )
+                    gcode += linenumber(values) + comment
+        comment = create_comment("(begin preamble)\n", values["COMMENT_SYMBOL"])
+        gcode += linenumber(values) + comment
+    for line in values["PREAMBLE"].splitlines(False):
+        gcode += linenumber(values) + line + "\n"
+    gcode += linenumber(values) + values["UNITS"] + "\n"
+
+    for obj in objectslist:
+
+        # Skip inactive operations
+        if hasattr(obj, "Active"):
+            if not obj.Active:
+                continue
+        if hasattr(obj, "Base") and hasattr(obj.Base, "Active"):
+            if not obj.Base.Active:
+                continue
+
+        # do the pre_op
+        if values["OUTPUT_COMMENTS"]:
+            if values["SHOW_OPERATION_LABELS"]:
+                comment = create_comment(
+                    "(begin operation: %s)\n" % obj.Label, values["COMMENT_SYMBOL"]
+                )
+            else:
+                comment = create_comment("(begin operation)\n", values["COMMENT_SYMBOL"])
+            gcode += linenumber(values) + comment
+            if values["SHOW_MACHINE_UNITS"]:
+                comment = create_comment(
+                    "(machine units: %s)\n" % values["UNIT_SPEED_FORMAT"], values["COMMENT_SYMBOL"]
+                )
+                gcode += linenumber(values) + comment
+        for line in values["PRE_OPERATION"].splitlines(True):
+            gcode += linenumber(values) + line
+
+        # get coolant mode
+        coolantMode = "None"
+        if hasattr(obj, "CoolantMode") or hasattr(obj, "Base") and hasattr(obj.Base, "CoolantMode"):
+            if hasattr(obj, "CoolantMode"):
+                coolantMode = obj.CoolantMode
+            else:
+                coolantMode = obj.Base.CoolantMode
+
+        # turn coolant on if required
+        if values["ENABLE_COOLANT"]:
+            if values["OUTPUT_COMMENTS"]:
+                if not coolantMode == "None":
+                    comment = create_comment(
+                        "(Coolant On:" + coolantMode + ")\n", values["COMMENT_SYMBOL"]
+                    )
+                    gcode += linenumber(values) + comment
+            if coolantMode == "Flood":
+                gcode += linenumber(values) + "M8" + "\n"
+            if coolantMode == "Mist":
+                gcode += linenumber(values) + "M7" + "\n"
+
+        # process the operation gcode
+        gcode += parse(values, obj)
+
+        # do the post_op
+        if values["OUTPUT_COMMENTS"]:
+            comment = create_comment(
+                "(%s operation: %s)\n" % (values["FINISH_LABEL"], obj.Label),
+                values["COMMENT_SYMBOL"],
+            )
+            gcode += linenumber(values) + comment
+        for line in values["POST_OPERATION"].splitlines(True):
+            gcode += linenumber(values) + line
+
+        # turn coolant off if required
+        if values["ENABLE_COOLANT"]:
+            if not coolantMode == "None":
+                if values["OUTPUT_COMMENTS"]:
+                    comment = create_comment(
+                        "(Coolant Off:" + coolantMode + ")\n", values["COMMENT_SYMBOL"]
+                    )
+                    gcode += linenumber(values) + comment
+                gcode += linenumber(values) + "M9" + "\n"
+
+    # do the post_amble
+    if values["OUTPUT_COMMENTS"]:
+        comment = create_comment("(begin postamble)\n", values["COMMENT_SYMBOL"])
+        gcode += comment
+    for line in values["TOOLRETURN"].splitlines(True):
+        gcode += linenumber(values) + line
+    for line in values["SAFETYBLOCK"].splitlines(True):
+        gcode += linenumber(values) + line
+    for line in values["POSTAMBLE"].splitlines(True):
+        gcode += linenumber(values) + line
+
+    if FreeCAD.GuiUp and values["SHOW_EDITOR"]:
+        final = gcode
+        if len(gcode) > 100000:
+            print("Skipping editor since output is greater than 100kb")
+        else:
+            dia = GCodeEditorDialog()
+            dia.editor.setText(gcode)
+            result = dia.exec_()
+            if result:
+                final = dia.editor.toPlainText()
+    else:
+        final = gcode
+
+    print("done postprocessing.")
+
+    if not filename == "-":
+        gfile = pythonopen(filename, "w")
+        gfile.write(final)
+        gfile.close()
+
+    return final

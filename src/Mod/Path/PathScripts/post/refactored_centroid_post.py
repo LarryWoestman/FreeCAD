@@ -26,10 +26,6 @@
 
 from __future__ import print_function
 
-import datetime
-
-import FreeCAD
-from PathScripts import PathToolController
 from PathScripts import PostUtils
 
 #
@@ -79,31 +75,37 @@ def processArguments(values, argstring):
     #
     global UNITS
 
-    for arg in argstring.split():
-        if arg == "--header":
-            values["OUTPUT_HEADER"] = True
-        elif arg == "--no-header":
-            values["OUTPUT_HEADER"] = False
-        elif arg == "--comments":
-            values["OUTPUT_COMMENTS"] = True
-        elif arg == "--no-comments":
-            values["OUTPUT_COMMENTS"] = False
-        elif arg == "--line-numbers":
-            values["OUTPUT_LINE_NUMBERS"] = True
-        elif arg == "--no-line-numbers":
-            values["OUTPUT_LINE_NUMBERS"] = False
-        elif arg == "--show-editor":
-            values["SHOW_EDITOR"] = True
-        elif arg == "--no-show-editor":
-            values["SHOW_EDITOR"] = False
-        elif arg.split("=")[0] == "--axis-precision":
-            values["AXIS_PRECISION"] = arg.split("=")[1]
-        elif arg.split("=")[0] == "--feed-precision":
-            values["FEED_PRECISION"] = arg.split("=")[1]
-        elif arg == "--inches":
-            UNITS = "G20"
-            values["UNIT_SPEED_FORMAT"] = "in/min"
-            values["UNIT_FORMAT"] = "in"
+    try:
+        for arg in argstring.split():
+            if arg == "--header":
+                values["OUTPUT_HEADER"] = True
+            elif arg == "--no-header":
+                values["OUTPUT_HEADER"] = False
+            elif arg == "--comments":
+                values["OUTPUT_COMMENTS"] = True
+            elif arg == "--no-comments":
+                values["OUTPUT_COMMENTS"] = False
+            elif arg == "--line-numbers":
+                values["OUTPUT_LINE_NUMBERS"] = True
+            elif arg == "--no-line-numbers":
+                values["OUTPUT_LINE_NUMBERS"] = False
+            elif arg == "--show-editor":
+                values["SHOW_EDITOR"] = True
+            elif arg == "--no-show-editor":
+                values["SHOW_EDITOR"] = False
+            elif arg.split("=")[0] == "--axis-precision":
+                values["AXIS_PRECISION"] = arg.split("=")[1]
+            elif arg.split("=")[0] == "--feed-precision":
+                values["FEED_PRECISION"] = arg.split("=")[1]
+            elif arg == "--inches":
+                UNITS = "G20"
+                values["UNIT_SPEED_FORMAT"] = "in/min"
+                values["UNIT_FORMAT"] = "in"
+
+    except Exception:
+        return False
+
+    return True
 
 
 def export(objectslist, filename, argstring):
@@ -118,7 +120,10 @@ def export(objectslist, filename, argstring):
     PostUtils.init_values(values)
     values["AXIS_PRECISION"] = 4
     values["COMMENT_SYMBOL"] = ";"
+    values["ENABLE_COOLANT"] = False
     values["FEED_PRECISION"] = 1
+    values["FINISH_LABEL"] = "end"
+    values["LIST_TOOLS_IN_PREAMBLE"] = True
     # This list controls the order of parameters in a line during output.
     # centroid doesn't want K properties on XY plane; Arcs need work.
     values["PARAMETER_ORDER"] = [
@@ -138,18 +143,28 @@ def export(objectslist, filename, argstring):
         "H",
     ]
     # Postamble text will appear following the last operation.
-    POSTAMBLE = """M99
+    values[
+        "POSTAMBLE"
+    ] = """M99
 """
     # Preamble text will appear at the beginning of the GCODE output file.
-    PREAMBLE = """G53 G00 G17
+    values[
+        "PREAMBLE"
+    ] = """G53 G00 G17
 """
     values["REMOVE_MESSAGES"] = False
-    SAFETYBLOCK = """G90 G80 G40 G49
+    values[
+        "SAFETYBLOCK"
+    ] = """G90 G80 G40 G49
 """
+    values["SHOW_MACHINE_UNITS"] = False
+    values["SHOW_OPERATION_LABELS"] = False
     values["STOP_SPINDLE_FOR_TOOL_CHANGE"] = False
     # spindle off,height offset canceled,spindle retracted
     # (M25 is a centroid command to retract spindle)
-    TOOLRETURN = """M5
+    values[
+        "TOOLRETURN"
+    ] = """M5
 M25
 G49 H0
 """
@@ -159,86 +174,9 @@ G49 H0
     # G90
     # """
 
-    processArguments(values, argstring)
+    if not processArguments(values, argstring):
+        return None
 
-    for i in objectslist:
-        print(i.Name)
+    values["UNITS"] = UNITS
 
-    print("postprocessing...")
-    gcode = ""
-
-    # write header
-    if values["OUTPUT_HEADER"]:
-        # gCode header with information about CAD-software, post-processor
-        # and date/time
-        if FreeCAD.ActiveDocument:
-            cam_file = FreeCAD.ActiveDocument.FileName
-        else:
-            cam_file = "<None>"
-        header = """;Exported by FreeCAD
-;Post Processor: {}
-;CAM file: {}
-;Output Time: {}
-""".format(
-            __name__, cam_file, str(datetime.datetime.now())
-        )
-        gcode += header
-
-    gcode += SAFETYBLOCK
-
-    # Write the preamble
-    if values["OUTPUT_COMMENTS"]:
-        for item in objectslist:
-            if hasattr(item, "Proxy") and isinstance(item.Proxy, PathToolController.ToolController):
-                gcode += ";T{}={}\n".format(item.ToolNumber, item.Name)
-        gcode += PostUtils.linenumber(values) + ";begin preamble\n"
-    for line in PREAMBLE.splitlines(True):
-        gcode += PostUtils.linenumber(values) + line
-
-    gcode += PostUtils.linenumber(values) + UNITS + "\n"
-
-    for obj in objectslist:
-        # do the pre_op
-        if values["OUTPUT_COMMENTS"]:
-            gcode += PostUtils.linenumber(values) + ";begin operation\n"
-        for line in values["PRE_OPERATION"].splitlines(True):
-            gcode += PostUtils.linenumber(values) + line
-
-        gcode += PostUtils.parse(values, obj)
-
-        # do the post_op
-        if values["OUTPUT_COMMENTS"]:
-            gcode += PostUtils.linenumber(values) + ";end operation: %s\n" % obj.Label
-        for line in values["POST_OPERATION"].splitlines(True):
-            gcode += PostUtils.linenumber(values) + line
-
-    # do the postamble
-
-    if values["OUTPUT_COMMENTS"]:
-        gcode += ";begin postamble\n"
-    for line in TOOLRETURN.splitlines(True):
-        gcode += PostUtils.linenumber(values) + line
-    for line in SAFETYBLOCK.splitlines(True):
-        gcode += PostUtils.linenumber(values) + line
-    for line in POSTAMBLE.splitlines(True):
-        gcode += PostUtils.linenumber(values) + line
-
-    if FreeCAD.GuiUp and values["SHOW_EDITOR"]:
-        dia = PostUtils.GCodeEditorDialog()
-        dia.editor.setText(gcode)
-        result = dia.exec_()
-        if result:
-            final = dia.editor.toPlainText()
-        else:
-            final = gcode
-    else:
-        final = gcode
-
-    print("done postprocessing.")
-
-    if not filename == "-":
-        gfile = pythonopen(filename, "w")
-        gfile.write(final)
-        gfile.close()
-
-    return final
+    return PostUtils.export_common(values, objectslist, filename)

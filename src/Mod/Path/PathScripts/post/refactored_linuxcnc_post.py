@@ -25,15 +25,9 @@
 from __future__ import print_function
 
 import argparse
-import datetime
 import shlex
 
-import FreeCAD
 from PathScripts import PostUtils
-
-# to distinguish python built-in open function from the one declared below
-if open.__module__ in ["__builtin__", "io"]:
-    pythonopen = open
 
 #
 # The following variables need to be global variables
@@ -162,9 +156,12 @@ def export(objectslist, filename, argstring):
     PostUtils.init_values(values)
     values["AXIS_PRECISION"] = 3
     values["COMMENT_SYMBOL"] = "("
+    values["ENABLE_COOLANT"] = True
     values["FEED_PRECISION"] = 3
+    values["FINISH_LABEL"] = "finish"
     # the order of parameters
     # linuxcnc doesn't want K properties on XY plane; Arcs need work.
+    values["LIST_TOOLS_IN_PREAMBLE"] = False
     values["PARAMETER_ORDER"] = [
         "X",
         "Y",
@@ -185,136 +182,22 @@ def export(objectslist, filename, argstring):
         "P",
     ]
     values["REMOVE_MESSAGES"] = True
+    values["SAFETYBLOCK"] = """"""
+    values["SHOW_MACHINE_UNITS"] = True
+    values["SHOW_OPERATION_LABELS"] = True
     values["STOP_SPINDLE_FOR_TOOL_CHANGE"] = True
+    values["TOOLRETURN"] = """"""
     # if true G43 will be output following tool changes
     values["USE_TLO"] = True
 
     if not processArguments(values, argstring):
         return None
 
-    for obj in objectslist:
-        if not hasattr(obj, "Path"):
-            print(
-                "the object " + obj.Name + " is not a path. Please select only path and Compounds."
-            )
-            return None
+    values["POSTAMBLE"] = POSTAMBLE
+    values["PREAMBLE"] = PREAMBLE
+    values["UNITS"] = UNITS
 
-    print("postprocessing...")
-    gcode = ""
-
-    # write header
-    if values["OUTPUT_HEADER"]:
-        comment = PostUtils.create_comment("(Exported by FreeCAD)\n", values["COMMENT_SYMBOL"])
-        gcode += PostUtils.linenumber(values) + comment
-        comment = PostUtils.create_comment(
-            "(Post Processor: " + __name__ + ")\n", values["COMMENT_SYMBOL"]
-        )
-        gcode += PostUtils.linenumber(values) + comment
-        comment = PostUtils.create_comment(
-            "(Output Time:" + str(datetime.datetime.now()) + ")\n", values["COMMENT_SYMBOL"]
-        )
-        gcode += PostUtils.linenumber(values) + comment
-
-    # Write the preamble
-    if values["OUTPUT_COMMENTS"]:
-        comment = PostUtils.create_comment("(begin preamble)\n", values["COMMENT_SYMBOL"])
-        gcode += PostUtils.linenumber(values) + comment
-    for line in PREAMBLE.splitlines(False):
-        gcode += PostUtils.linenumber(values) + line + "\n"
-    gcode += PostUtils.linenumber(values) + UNITS + "\n"
-
-    for obj in objectslist:
-
-        # Skip inactive operations
-        if hasattr(obj, "Active"):
-            if not obj.Active:
-                continue
-        if hasattr(obj, "Base") and hasattr(obj.Base, "Active"):
-            if not obj.Base.Active:
-                continue
-
-        # do the pre_op
-        if values["OUTPUT_COMMENTS"]:
-            comment = PostUtils.create_comment(
-                "(begin operation: %s)\n" % obj.Label, values["COMMENT_SYMBOL"]
-            )
-            gcode += PostUtils.linenumber(values) + comment
-            comment = PostUtils.create_comment(
-                "(machine units: %s)\n" % values["UNIT_SPEED_FORMAT"], values["COMMENT_SYMBOL"]
-            )
-            gcode += PostUtils.linenumber(values) + comment
-        for line in values["PRE_OPERATION"].splitlines(True):
-            gcode += PostUtils.linenumber(values) + line
-
-        # get coolant mode
-        coolantMode = "None"
-        if hasattr(obj, "CoolantMode") or hasattr(obj, "Base") and hasattr(obj.Base, "CoolantMode"):
-            if hasattr(obj, "CoolantMode"):
-                coolantMode = obj.CoolantMode
-            else:
-                coolantMode = obj.Base.CoolantMode
-
-        # turn coolant on if required
-        if values["OUTPUT_COMMENTS"]:
-            if not coolantMode == "None":
-                comment = PostUtils.create_comment(
-                    "(Coolant On:" + coolantMode + ")\n", values["COMMENT_SYMBOL"]
-                )
-                gcode += PostUtils.linenumber(values) + comment
-        if coolantMode == "Flood":
-            gcode += PostUtils.linenumber(values) + "M8" + "\n"
-        if coolantMode == "Mist":
-            gcode += PostUtils.linenumber(values) + "M7" + "\n"
-
-        # process the operation gcode
-        gcode += PostUtils.parse(values, obj)
-
-        # do the post_op
-        if values["OUTPUT_COMMENTS"]:
-            comment = PostUtils.create_comment(
-                "(finish operation: %s)\n" % obj.Label, values["COMMENT_SYMBOL"]
-            )
-            gcode += PostUtils.linenumber(values) + comment
-        for line in values["POST_OPERATION"].splitlines(True):
-            gcode += PostUtils.linenumber(values) + line
-
-        # turn coolant off if required
-        if not coolantMode == "None":
-            if values["OUTPUT_COMMENTS"]:
-                comment = PostUtils.create_comment(
-                    "(Coolant Off:" + coolantMode + ")\n", values["COMMENT_SYMBOL"]
-                )
-                gcode += PostUtils.linenumber(values) + comment
-            gcode += PostUtils.linenumber(values) + "M9" + "\n"
-
-    # do the post_amble
-    if values["OUTPUT_COMMENTS"]:
-        comment = PostUtils.create_comment("(begin postamble)\n", values["COMMENT_SYMBOL"])
-        gcode += comment
-    for line in POSTAMBLE.splitlines(True):
-        gcode += PostUtils.linenumber(values) + line
-
-    if FreeCAD.GuiUp and values["SHOW_EDITOR"]:
-        final = gcode
-        if len(gcode) > 100000:
-            print("Skipping editor since output is greater than 100kb")
-        else:
-            dia = PostUtils.GCodeEditorDialog()
-            dia.editor.setText(gcode)
-            result = dia.exec_()
-            if result:
-                final = dia.editor.toPlainText()
-    else:
-        final = gcode
-
-    print("done postprocessing.")
-
-    if not filename == "-":
-        gfile = pythonopen(filename, "w")
-        gfile.write(final)
-        gfile.close()
-
-    return final
+    return PostUtils.export_common(values, objectslist, filename)
 
 
 # print(__name__ + " gcode postprocessor loaded.")
