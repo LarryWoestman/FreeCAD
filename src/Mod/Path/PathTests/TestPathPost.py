@@ -95,8 +95,9 @@ class TestPathPost(unittest.TestCase):
         postprocessors_to_test = (
             # "centroid",
             # "linuxcnc",
-            "refactored_centroid",
-            "refactored_linuxcnc",
+            # "refactored_centroid",
+            # "refactored_linuxcnc",
+            "grbl",
         )
         #
         # Enough of the path to where the tests are stored so that
@@ -140,11 +141,17 @@ class TestPathPost(unittest.TestCase):
                     output_filename = PathPost.CommandPathPost.processFileNameSubstitutions(
                         self, job, output_file_path
                     )
+                    # print("output file: " + output_filename + "\n")
                     file_path, extension = os.path.splitext(output_filename)
                     reference_file_name = "%s%s%s" % (file_path, "_ref", extension)
+                    # print("reference file: " + reference_file_name + "\n")
                     gcode = processor.export(slist, output_filename, postprocessor_arguments)
+                    if not gcode:
+                        print("no gcode\n")
                     with open(reference_file_name, "r") as fp:
                         reference_gcode = fp.read()
+                    if not reference_gcode:
+                        print("no reference gcode\n")
                     if gcode != reference_gcode:
                         msg = "".join(
                             difflib.ndiff(gcode.splitlines(True), reference_gcode.splitlines(True))

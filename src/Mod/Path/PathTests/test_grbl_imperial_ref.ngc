@@ -1,0 +1,39 @@
+(Begin preamble)
+G17 G90
+G20
+(Begin operation: G54)
+(Path: G54)
+G54
+G0 Z0.3543
+(Finish operation: G54)
+(Begin operation: 5mm Endmill001)
+(Path: 5mm Endmill001)
+(5mm Endmill001)
+(Begin toolchange)
+( M6 T1 )
+M3 S123
+(Finish operation: 5mm Endmill001)
+(Begin operation: Profile)
+(Path: Profile)
+(Profile)
+(Compensated Tool Path. Diameter: 5.0)
+G0 Z0.3543
+G0 X0.0000 Y0.0000
+G0 Y-0.0984
+G0 Y-0.0984 Z0.2756
+G1 X0.0000 Y-0.0984 Z-0.0394 F13.3937
+G2 X-0.0984 Y0.0000 Z-0.0394 I0.0000 J0.0984 K0.0000 F5.5276
+G1 X-0.0984 Y0.1181 Z-0.0394 F5.5276
+G2 X0.0000 Y0.2165 Z-0.0394 I0.0984 J0.0000 K0.0000 F5.5276
+G1 X0.1181 Y0.2165 Z-0.0394 F5.5276
+G2 X0.2165 Y0.1181 Z-0.0394 I0.0000 J-0.0984 K0.0000 F5.5276
+G1 X0.2165 Y0.0000 Z-0.0394 F5.5276
+G2 X0.1181 Y-0.0984 Z-0.0394 I-0.0984 J0.0000 K0.0000 F5.5276
+G1 X0.0000 Y-0.0984 Z-0.0394 F5.5276
+G0 Z0.3543
+G0 Z0.3543
+(Finish operation: Profile)
+(Begin postamble)
+M5
+G17 G90
+M2
