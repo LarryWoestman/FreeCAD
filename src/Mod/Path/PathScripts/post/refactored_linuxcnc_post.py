@@ -181,6 +181,7 @@ def export(objectslist, filename, argstring):
         "D",
         "P",
     ]
+    values["POSTPROCESSOR_FILE_NAME"] = __name__
     values["REMOVE_MESSAGES"] = True
     values["SAFETYBLOCK"] = """"""
     values["SHOW_MACHINE_UNITS"] = True

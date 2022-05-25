@@ -26,6 +26,7 @@
 These are common functions and classes for creating custom post processors.
 """
 import datetime
+import os
 
 from PySide import QtCore, QtGui
 
@@ -263,8 +264,9 @@ def init_values(values):
 def linenumber(values):
     """Output the next line number if appropriate."""
     if values["OUTPUT_LINE_NUMBERS"]:
+        line_num = str(values["line_number"])
         values["line_number"] += 10
-        return "N" + str(values["line_number"]) + " "
+        return "N" + line_num + " "
     return ""
 
 
@@ -386,10 +388,6 @@ def parse(values, pathobj):
                     out += linenumber(values) + "M5\n"
                 for line in values["TOOL_CHANGE"].splitlines(False):
                     out += linenumber(values) + line + "\n"
-                # add height offset
-                if values["USE_TLO"]:
-                    tool_height = "\nG43 H" + str(int(c.Parameters["T"]))
-                    outstring.append(tool_height)
 
             if command == "message" and values["REMOVE_MESSAGES"]:
                 if values["OUTPUT_COMMENTS"] is False:
@@ -400,13 +398,21 @@ def parse(values, pathobj):
             # prepend a line number and append a newline
             if len(outstring) >= 1:
                 if values["OUTPUT_LINE_NUMBERS"]:
-                    outstring.insert(0, (linenumber(values)))
+                    # In this case we don't use the linenumber function
+                    # because it appends a space which we don't want.
+                    values["line_number"] += 10
+                    line_no = "N" + str(values["line_number"])
+                    outstring.insert(0, (line_no))
 
                 # append the line to the final output
                 out += values["COMMAND_SPACE"].join(outstring)
                 # Note: Do *not* strip `out`, since that forces the allocation
                 # of a contiguous string & thus quadratic complexity.
                 out += "\n"
+
+            # add height offset
+            if command == "M6" and values["USE_TLO"]:
+                out += linenumber(values) + "G43 H" + str(int(c.Parameters["T"])) + "\n"
 
         return out
 
@@ -431,10 +437,13 @@ def export_common(values, objectslist, filename):
     if values["OUTPUT_HEADER"]:
         comment = create_comment("(Exported by FreeCAD)\n", values["COMMENT_SYMBOL"])
         gcode += linenumber(values) + comment
-        comment = create_comment("(Post Processor: " + __name__ + ")\n", values["COMMENT_SYMBOL"])
+        comment = create_comment(
+            "(Post Processor: " + values["POSTPROCESSOR_FILE_NAME"] + ")\n",
+            values["COMMENT_SYMBOL"],
+        )
         gcode += linenumber(values) + comment
         if FreeCAD.ActiveDocument:
-            cam_file = FreeCAD.ActiveDocument.FileName
+            cam_file = os.path.basename(FreeCAD.ActiveDocument.FileName)
         else:
             cam_file = "<None>"
         comment = create_comment("(Cam File: " + cam_file + ")\n", values["COMMENT_SYMBOL"])
@@ -538,7 +547,7 @@ def export_common(values, objectslist, filename):
     # do the post_amble
     if values["OUTPUT_COMMENTS"]:
         comment = create_comment("(begin postamble)\n", values["COMMENT_SYMBOL"])
-        gcode += comment
+        gcode += linenumber(values) + comment
     for line in values["TOOLRETURN"].splitlines(False):
         gcode += linenumber(values) + line + "\n"
     for line in values["SAFETYBLOCK"].splitlines(False):

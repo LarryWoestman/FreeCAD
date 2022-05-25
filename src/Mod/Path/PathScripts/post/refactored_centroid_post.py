@@ -147,6 +147,7 @@ def export(objectslist, filename, argstring):
         "POSTAMBLE"
     ] = """M99
 """
+    values["POSTPROCESSOR_FILE_NAME"] = __name__
     # Preamble text will appear at the beginning of the GCODE output file.
     values[
         "PREAMBLE"
