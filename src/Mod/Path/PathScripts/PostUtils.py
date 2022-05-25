@@ -384,8 +384,8 @@ def parse(values, pathobj):
                 if values["STOP_SPINDLE_FOR_TOOL_CHANGE"]:
                     # stop the spindle
                     out += linenumber(values) + "M5\n"
-                for line in values["TOOL_CHANGE"].splitlines(True):
-                    out += linenumber(values) + line
+                for line in values["TOOL_CHANGE"].splitlines(False):
+                    out += linenumber(values) + line + "\n"
                 # add height offset
                 if values["USE_TLO"]:
                     tool_height = "\nG43 H" + str(int(c.Parameters["T"]))
@@ -444,8 +444,8 @@ def export_common(values, objectslist, filename):
         )
         gcode += linenumber(values) + comment
 
-    if values["SAFETYBLOCK"]:
-        gcode += values["SAFETYBLOCK"]
+    for line in values["SAFETYBLOCK"].splitlines(False):
+        gcode += linenumber(values) + line + "\n"
 
     # Write the preamble
     if values["OUTPUT_COMMENTS"]:
@@ -488,8 +488,8 @@ def export_common(values, objectslist, filename):
                     "(machine units: %s)\n" % values["UNIT_SPEED_FORMAT"], values["COMMENT_SYMBOL"]
                 )
                 gcode += linenumber(values) + comment
-        for line in values["PRE_OPERATION"].splitlines(True):
-            gcode += linenumber(values) + line
+        for line in values["PRE_OPERATION"].splitlines(False):
+            gcode += linenumber(values) + line + "\n"
 
         # get coolant mode
         coolantMode = "None"
@@ -522,8 +522,8 @@ def export_common(values, objectslist, filename):
                 values["COMMENT_SYMBOL"],
             )
             gcode += linenumber(values) + comment
-        for line in values["POST_OPERATION"].splitlines(True):
-            gcode += linenumber(values) + line
+        for line in values["POST_OPERATION"].splitlines(False):
+            gcode += linenumber(values) + line + "\n"
 
         # turn coolant off if required
         if values["ENABLE_COOLANT"]:
@@ -539,12 +539,12 @@ def export_common(values, objectslist, filename):
     if values["OUTPUT_COMMENTS"]:
         comment = create_comment("(begin postamble)\n", values["COMMENT_SYMBOL"])
         gcode += comment
-    for line in values["TOOLRETURN"].splitlines(True):
-        gcode += linenumber(values) + line
-    for line in values["SAFETYBLOCK"].splitlines(True):
-        gcode += linenumber(values) + line
-    for line in values["POSTAMBLE"].splitlines(True):
-        gcode += linenumber(values) + line
+    for line in values["TOOLRETURN"].splitlines(False):
+        gcode += linenumber(values) + line + "\n"
+    for line in values["SAFETYBLOCK"].splitlines(False):
+        gcode += linenumber(values) + line + "\n"
+    for line in values["POSTAMBLE"].splitlines(False):
+        gcode += linenumber(values) + line + "\n"
 
     if FreeCAD.GuiUp and values["SHOW_EDITOR"]:
         final = gcode
