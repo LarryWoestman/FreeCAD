@@ -240,6 +240,13 @@ def splitArcs(path):
 def init_values(values):
     """Initialize many of the commonly used values in postprocessors."""
     values["COMMAND_SPACE"] = " "
+    #
+    # By default the line ending characters of the output file(s)
+    # are written to match the system that the postprocessor runs on.
+    # If you need to force the line ending characters to a specific
+    # value, set this variable to "\n" or "\r\n" instead.
+    #
+    values["END_OF_LINE_CHARACTERS"] = os.linesep
     # line number starting value
     values["line_number"] = 100
     # if true commands are suppressed if they are the same as the previous line.
@@ -571,7 +578,7 @@ def export_common(values, objectslist, filename):
     print("done postprocessing.")
 
     if not filename == "-":
-        gfile = pythonopen(filename, "w")
+        gfile = pythonopen(filename, "w", newline=values["END_OF_LINE_CHARACTERS"])
         gfile.write(final)
         gfile.close()
 
