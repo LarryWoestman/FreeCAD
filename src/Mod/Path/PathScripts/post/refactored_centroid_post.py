@@ -49,8 +49,8 @@ real GCode suitable for a centroid 3 axis mill. This postprocessor, once placed
 in the appropriate PathScripts folder, can be used directly from inside
 FreeCAD, via the GUI importer or via python scripts with:
 
-import centroid_post
-centroid_post.export(object,"/path/to/file.ncc","")
+import refactored_centroid_post
+refactored_centroid_post.export(object,"/path/to/file.ncc","")
 """
 TOOLTIP_ARGS = """
 Arguments for centroid:
@@ -64,10 +64,6 @@ Arguments for centroid:
 """
 # G21 for metric, G20 for US standard
 UNITS = "G21"
-
-# to distinguish python built-in open function from the one declared below
-if open.__module__ in ["__builtin__", "io"]:
-    pythonopen = open
 
 
 def processArguments(values, argstring):
@@ -117,10 +113,10 @@ def export(objectslist, filename, argstring):
     # Holds various values that are used throughout the postprocessor code.
     #
     values = {}
-    PostUtils.init_values(values)
+    PostUtils.init_shared_values(values)
+
     values["AXIS_PRECISION"] = 4
     values["COMMENT_SYMBOL"] = ";"
-    values["ENABLE_COOLANT"] = False
     values["FEED_PRECISION"] = 1
     values["FINISH_LABEL"] = "end"
     values["LIST_TOOLS_IN_PREAMBLE"] = True

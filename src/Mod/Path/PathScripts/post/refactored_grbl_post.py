@@ -1,5 +1,8 @@
+# -*- coding: utf-8 -*-
 # ***************************************************************************
 # *   Copyright (c) 2014 sliptonic <shopinthewoods@gmail.com>               *
+# *   Copyright (c) 2018, 2019 Gauthier Briere                              *
+# *   Copyright (c) 2019, 2020 Schildkroet                                  *
 # *   Copyright (c) 2022 Larry Woestman <LarryWoestman2@gmail.com>          *
 # *                                                                         *
 # *   This file is part of the FreeCAD CAx development system.              *
@@ -22,8 +25,6 @@
 # *                                                                         *
 # ***************************************************************************
 
-from __future__ import print_function
-
 import argparse
 import shlex
 
@@ -45,29 +46,39 @@ from PathScripts import PostUtils
 #
 CORNER_MAX = {"x": 500, "y": 300, "z": 300}
 CORNER_MIN = {"x": 0, "y": 0, "z": 0}
-MACHINE_NAME = "LinuxCNC"
-# Postamble text will appear following the last operation.
-POSTAMBLE = """M05
-G17 G54 G90 G80 G40
+MACHINE_NAME = "grbl"
+# default postamble text will appear following the last operation.
+POSTAMBLE = """M5
+G17 G90
 M2
 """
-# Preamble text will appear at the beginning of the GCODE output file.
-PREAMBLE = """G17 G54 G40 G49 G80 G90
+# default preamble text will appear at the beginning of the gCode output file.
+PREAMBLE = """G17 G90
 """
-TOOLTIP = """This is a postprocessor file for the Path workbench. It is used to
-take a pseudo-gcode fragment outputted by a Path object, and output
-real GCode suitable for a linuxcnc 3 axis mill. This postprocessor, once placed
-in the appropriate PathScripts folder, can be used directly from inside
-FreeCAD, via the GUI importer or via python scripts with:
+TOOLTIP = """
+Generate g-code from a Path that is compatible with the grbl controller:
 
-import refactored_linuxcnc_post
-refactored_linuxcnc_post.export(object,"/path/to/file.ncc","")
+import refactored_grbl_post
+refactored_grbl_post.export(object, "/path/to/file.ncc")
 """
 
+# Parser arguments list & definition
 parser = argparse.ArgumentParser(prog=MACHINE_NAME, add_help=False)
-parser.add_argument("--no-header", action="store_true", help="suppress header output")
+parser.add_argument("--comments", action="store_true", help="output comment (default)")
 parser.add_argument("--no-comments", action="store_true", help="suppress comment output")
+parser.add_argument("--header", action="store_true", help="output headers (default)")
+parser.add_argument("--no-header", action="store_true", help="suppress header output")
 parser.add_argument("--line-numbers", action="store_true", help="prefix with line numbers")
+parser.add_argument(
+    "--no-line-numbers",
+    action="store_true",
+    help="don't prefix with line numbers (default)",
+)
+parser.add_argument(
+    "--show-editor",
+    action="store_true",
+    help="pop up editor before writing output (default)",
+)
 parser.add_argument(
     "--no-show-editor",
     action="store_true",
@@ -75,29 +86,48 @@ parser.add_argument(
 )
 parser.add_argument("--precision", default="3", help="number of digits of precision, default=3")
 parser.add_argument(
+    "--translate_drill",
+    action="store_true",
+    help="translate drill cycles G81, G82 & G83 in G0/G1 movements",
+)
+parser.add_argument(
+    "--no-translate_drill",
+    action="store_true",
+    help="don't translate drill cycles G81, G82 & G83 in G0/G1 movements (default)",
+)
+parser.add_argument(
     "--preamble",
-    help='set commands to be issued before the first command, default="' + PREAMBLE + '"',
+    help='set commands to be issued before the first command, default="G17 G90"',
 )
 parser.add_argument(
     "--postamble",
-    help='set commands to be issued after the last command, default="' + POSTAMBLE + '"',
+    help='set commands to be issued after the last command, default="M5\nG17 G90\n;M2"',
 )
 parser.add_argument(
     "--inches", action="store_true", help="Convert output for US imperial mode (G20)"
 )
+parser.add_argument("--tool-change", action="store_true", help="Insert M6 for all tool changes")
 parser.add_argument(
-    "--modal",
-    action="store_true",
-    help="Output the Same G-command Name USE NonModal Mode",
+    "--wait-for-spindle",
+    type=int,
+    default=0,
+    help="Wait for spindle to reach desired speed after M3 / M4, default=0",
 )
-parser.add_argument("--axis-modal", action="store_true", help="Output the Same Axis Value Mode")
 parser.add_argument(
-    "--no-tlo",
+    "--return-to",
+    default="",
+    help="Move to the specified coordinates at the end, e.g. --return-to=0,0",
+)
+parser.add_argument(
+    "--bcnc",
     action="store_true",
-    help="suppress tool length offset (G43) following tool changes",
+    help="Add Job operations as bCNC block headers. Consider suppressing existing comments: Add argument --no-comments",
+)
+parser.add_argument(
+    "--no-bcnc", action="store_true", help="suppress bCNC block header output (default)"
 )
 TOOLTIP_ARGS = parser.format_help()
-# G21 for metric, G20 for US standard
+# G21 for metric, G20 for us standard
 UNITS = "G21"
 
 
@@ -112,30 +142,49 @@ def processArguments(values, argstring):
         args = parser.parse_args(shlex.split(argstring))
         if args.no_header:
             values["OUTPUT_HEADER"] = False
+        if args.header:
+            values["OUTPUT_HEADER"] = True
         if args.no_comments:
             values["OUTPUT_COMMENTS"] = False
+        if args.comments:
+            values["OUTPUT_COMMENTS"] = True
+        if args.no_line_numbers:
+            values["OUTPUT_LINE_NUMBERS"] = False
         if args.line_numbers:
             values["OUTPUT_LINE_NUMBERS"] = True
         if args.no_show_editor:
             values["SHOW_EDITOR"] = False
+        if args.show_editor:
+            values["SHOW_EDITOR"] = True
         values["AXIS_PRECISION"] = args.precision
         values["FEED_PRECISION"] = args.precision
         if args.preamble is not None:
             PREAMBLE = args.preamble
         if args.postamble is not None:
             POSTAMBLE = args.postamble
+        if args.no_translate_drill:
+            values["TRANSLATE_DRILL_CYCLES"] = False
+        if args.translate_drill:
+            values["TRANSLATE_DRILL_CYCLES"] = True
         if args.inches:
             UNITS = "G20"
             values["UNIT_SPEED_FORMAT"] = "in/min"
             values["UNIT_FORMAT"] = "in"
             values["AXIS_PRECISION"] = 4
             values["FEED_PRECISION"] = 4
-        if args.modal:
-            values["MODAL"] = True
-        if args.no_tlo:
-            values["USE_TLO"] = False
-        if args.axis_modal:
-            values["OUTPUT_DOUBLES"] = False
+        if args.tool_change:
+            values["OUTPUT_TOOL_CHANGE"] = True
+        if args.wait_for_spindle > 0:
+            values["SPINDLE_WAIT"] = args.wait_for_spindle
+        if args.return_to != "":
+            values["RETURN_TO"] = [int(v) for v in args.return_to.split(",")]
+            if len(values["RETURN_TO"]) != 2:
+                values["RETURN_TO"] = None
+                print("--return-to coordinates must be specified as <x>,<y>, ignoring")
+        if args.bcnc:
+            values["OUTPUT_BCNC"] = True
+        if args.no_bcnc:
+            values["OUTPUT_BCNC"] = False
 
     except Exception:
         return False
@@ -155,10 +204,9 @@ def export(objectslist, filename, argstring):
     values = {}
     PostUtils.init_shared_values(values)
 
-    values["ENABLE_COOLANT"] = True
-    values["FINISH_LABEL"] = "finish"
-    # the order of parameters
-    # linuxcnc doesn't want K properties on XY plane; Arcs need work.
+    values["ENABLE_MACHINE_SPECIFIC_COMMANDS"] = True
+    # default don't output M6 tool changes (comment it) as grbl currently does not handle it
+    values["OUTPUT_TOOL_CHANGE"] = False
     values["PARAMETER_ORDER"] = [
         "X",
         "Y",
@@ -166,19 +214,22 @@ def export(objectslist, filename, argstring):
         "A",
         "B",
         "C",
+        "U",
+        "V",
+        "W",
         "I",
         "J",
+        "K",
         "F",
         "S",
         "T",
         "Q",
         "R",
         "L",
-        "H",
-        "D",
         "P",
     ]
     values["POSTPROCESSOR_FILE_NAME"] = __name__
+    values["USE_TLO"] = False
 
     if not processArguments(values, argstring):
         return None
@@ -190,4 +241,4 @@ def export(objectslist, filename, argstring):
     return PostUtils.export_common(values, objectslist, filename)
 
 
-# print(__name__ + " gcode postprocessor loaded.")
+# print(__name__ + ": GCode postprocessor loaded.")
