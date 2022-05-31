@@ -37,7 +37,7 @@ from PathScripts.PathPostProcessor import PostProcessor
 # If KEEP_DEBUG_OUTPUT is False, remove the gcode file after the test.
 # If KEEP_DEBUG_OUTPUT is True, then leave the gcode file behind so it
 # can be looked at easily.
-KEEP_DEBUG_OUTPUT = True
+KEEP_DEBUG_OUTPUT = False
 
 PathPost.LOG_MODULE = PathLog.thisModule()
 
@@ -96,8 +96,8 @@ class TestPathPost(unittest.TestCase):
             # "centroid",
             # "grbl",
             # "linuxcnc",
-            # "refactored_centroid",
-            # "refactored_linuxcnc",
+            "refactored_centroid",
+            "refactored_linuxcnc",
             "refactored_grbl",
         )
         #
@@ -142,17 +142,17 @@ class TestPathPost(unittest.TestCase):
                     output_filename = PathPost.CommandPathPost.processFileNameSubstitutions(
                         self, job, output_file_path
                     )
-                    # print("output file: " + output_filename + "\n")
+                    # print("output file: " + output_filename)
                     file_path, extension = os.path.splitext(output_filename)
                     reference_file_name = "%s%s%s" % (file_path, "_ref", extension)
-                    # print("reference file: " + reference_file_name + "\n")
+                    # print("reference file: " + reference_file_name)
                     gcode = processor.export(slist, output_filename, postprocessor_arguments)
                     if not gcode:
-                        print("no gcode\n")
+                        print("no gcode")
                     with open(reference_file_name, "r") as fp:
                         reference_gcode = fp.read()
                     if not reference_gcode:
-                        print("no reference gcode\n")
+                        print("no reference gcode")
                     if gcode != reference_gcode:
                         msg = "".join(
                             difflib.ndiff(gcode.splitlines(True), reference_gcode.splitlines(True))

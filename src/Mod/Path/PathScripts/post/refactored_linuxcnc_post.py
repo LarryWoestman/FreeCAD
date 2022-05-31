@@ -156,7 +156,6 @@ def export(objectslist, filename, argstring):
     PostUtils.init_shared_values(values)
 
     values["ENABLE_COOLANT"] = True
-    values["FINISH_LABEL"] = "finish"
     # the order of parameters
     # linuxcnc doesn't want K properties on XY plane; Arcs need work.
     values["PARAMETER_ORDER"] = [

@@ -118,7 +118,7 @@ def export(objectslist, filename, argstring):
     values["AXIS_PRECISION"] = 4
     values["COMMENT_SYMBOL"] = ";"
     values["FEED_PRECISION"] = 1
-    values["FINISH_LABEL"] = "end"
+    values["FINISH_LABEL"] = "End"
     values["LIST_TOOLS_IN_PREAMBLE"] = True
     # This list controls the order of parameters in a line during output.
     # centroid doesn't want K properties on XY plane; Arcs need work.

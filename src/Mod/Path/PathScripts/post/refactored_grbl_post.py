@@ -205,6 +205,7 @@ def export(objectslist, filename, argstring):
     PostUtils.init_shared_values(values)
 
     values["ENABLE_MACHINE_SPECIFIC_COMMANDS"] = True
+    values["OUTPUT_PATH_LABELS"] = True
     # default don't output M6 tool changes (comment it) as grbl currently does not handle it
     values["OUTPUT_TOOL_CHANGE"] = False
     values["PARAMETER_ORDER"] = [
@@ -229,6 +230,7 @@ def export(objectslist, filename, argstring):
         "P",
     ]
     values["POSTPROCESSOR_FILE_NAME"] = __name__
+    values["SHOW_MACHINE_UNITS"] = False
     values["USE_TLO"] = False
 
     if not processArguments(values, argstring):

@@ -256,8 +256,8 @@ def drill_translate(values, outstring, cmd, params):
 
     if values["OUTPUT_COMMENTS"]:  # Comment the original command
         trBuff += (
-            linenumber()
-            + create_comment(format_outstring(outstring), values["COMMENT_SYMBOL"])
+            linenumber(values)
+            + create_comment(format_outstring(values, outstring), values["COMMENT_SYMBOL"])
             + "\n"
         )
 
@@ -271,8 +271,8 @@ def drill_translate(values, outstring, cmd, params):
     # R less than Z is error
     if RETRACT_Z < drill_Z:
         trBuff += (
-            linenumber()
-            + create_comment("drill cycle error: R less than Z", values["COMMENT_SYMBOL"])
+            linenumber(values)
+            + create_comment("Drill cycle error: R less than Z", values["COMMENT_SYMBOL"])
             + "\n"
         )
         return trBuff
@@ -299,7 +299,7 @@ def drill_translate(values, outstring, cmd, params):
     # wrap this block to ensure machine's values["MOTION_MODE"] is restored in case of error
     try:
         if values["MOTION_MODE"] == "G91":
-            trBuff += linenumber() + "G90\n"  # force absolute coordinates during cycles
+            trBuff += linenumber(values) + "G90\n"  # force absolute coordinates during cycles
 
         strG0_RETRACT_Z = (
             "G0 Z"
@@ -317,9 +317,9 @@ def drill_translate(values, outstring, cmd, params):
 
         # preliminary movement(s)
         if values["CURRENT_Z"] < RETRACT_Z:
-            trBuff += linenumber() + strG0_RETRACT_Z
+            trBuff += linenumber(values) + strG0_RETRACT_Z
         trBuff += (
-            linenumber()
+            linenumber(values)
             + "G0 X"
             + format(float(drill_X.getValueAs(values["UNIT_FORMAT"])), axis_precision_string)
             + " Y"
@@ -330,7 +330,7 @@ def drill_translate(values, outstring, cmd, params):
             # NIST GCODE 3.5.16.1 Preliminary and In-Between Motion says G0 to RETRACT_Z
             # Here use G1 since retract height may be below surface !
             trBuff += (
-                linenumber()
+                linenumber(values)
                 + "G1 Z"
                 + format(float(RETRACT_Z.getValueAs(values["UNIT_FORMAT"])), axis_precision_string)
                 + strF_Feedrate
@@ -340,15 +340,15 @@ def drill_translate(values, outstring, cmd, params):
         # drill moves
         if cmd in ("G81", "G82"):
             trBuff += (
-                linenumber()
+                linenumber(values)
                 + "G1 Z"
                 + format(float(drill_Z.getValueAs(values["UNIT_FORMAT"])), axis_precision_string)
                 + strF_Feedrate
             )
             # pause where applicable
             if cmd == "G82":
-                trBuff += linenumber() + "G4 P" + str(drill_DwellTime) + "\n"
-            trBuff += linenumber() + strG0_RETRACT_Z
+                trBuff += linenumber(values) + "G4 P" + str(drill_DwellTime) + "\n"
+            trBuff += linenumber(values) + strG0_RETRACT_Z
         else:  # 'G83'
             if params["Q"] != 0:
                 while 1:
@@ -357,7 +357,7 @@ def drill_translate(values, outstring, cmd, params):
                             last_Stop_Z + a_bit
                         )  # rapid move to just short of last drilling depth
                         trBuff += (
-                            linenumber()
+                            linenumber(values)
                             + "G0 Z"
                             + format(
                                 float(clearance_depth.getValueAs(values["UNIT_FORMAT"])),
@@ -368,7 +368,7 @@ def drill_translate(values, outstring, cmd, params):
                     next_Stop_Z = last_Stop_Z - drill_Step
                     if next_Stop_Z > drill_Z:
                         trBuff += (
-                            linenumber()
+                            linenumber(values)
                             + "G1 Z"
                             + format(
                                 float(next_Stop_Z.getValueAs(values["UNIT_FORMAT"])),
@@ -376,11 +376,11 @@ def drill_translate(values, outstring, cmd, params):
                             )
                             + strF_Feedrate
                         )
-                        trBuff += linenumber() + strG0_RETRACT_Z
+                        trBuff += linenumber(values) + strG0_RETRACT_Z
                         last_Stop_Z = next_Stop_Z
                     else:
                         trBuff += (
-                            linenumber()
+                            linenumber(values)
                             + "G1 Z"
                             + format(
                                 float(drill_Z.getValueAs(values["UNIT_FORMAT"])),
@@ -388,14 +388,14 @@ def drill_translate(values, outstring, cmd, params):
                             )
                             + strF_Feedrate
                         )
-                        trBuff += linenumber() + strG0_RETRACT_Z
+                        trBuff += linenumber(values) + strG0_RETRACT_Z
                         break
 
     except Exception:
         pass
 
     if values["MOTION_MODE"] == "G91":
-        trBuff += linenumber() + "G91\n"  # Restore if changed
+        trBuff += linenumber(values) + "G91\n"  # Restore if changed
 
     return trBuff
 
@@ -463,10 +463,11 @@ def init_shared_values(values):
     # default doesn't add bCNC operation block headers in output gCode file
     values["OUTPUT_BCNC"] = False
     values["OUTPUT_COMMENTS"] = True
-    values["OUTPUT_HEADER"] = True
-    values["OUTPUT_LINE_NUMBERS"] = False
     # if false duplicate axis values are suppressed if they are the same as the previous line.
     values["OUTPUT_DOUBLES"] = True
+    values["OUTPUT_HEADER"] = True
+    values["OUTPUT_LINE_NUMBERS"] = False
+    values["OUTPUT_PATH_LABELS"] = False
     # output tool change gcode
     values["OUTPUT_TOOL_CHANGE"] = True
     # This list controls the order of parameters in a line during output.
@@ -548,7 +549,7 @@ def parse(values, pathobj):
 
     if hasattr(pathobj, "Group"):  # We have a compound or project.
         if values["OUTPUT_COMMENTS"]:
-            comment = create_comment("compound: " + pathobj.Label, values["COMMENT_SYMBOL"])
+            comment = create_comment("Compound: " + pathobj.Label, values["COMMENT_SYMBOL"])
             out += linenumber(values) + comment + "\n"
         for p in pathobj.Group:
             out += parse(values, p)
@@ -559,7 +560,7 @@ def parse(values, pathobj):
         if not hasattr(pathobj, "Path"):
             return out
 
-        if values["OUTPUT_COMMENTS"]:
+        if values["OUTPUT_PATH_LABELS"] and values["OUTPUT_COMMENTS"]:
             comment = create_comment("Path: " + pathobj.Label, values["COMMENT_SYMBOL"])
             out += linenumber(values) + comment + "\n"
 
@@ -656,10 +657,10 @@ def parse(values, pathobj):
 
             if values["SPINDLE_WAIT"] > 0:
                 if command in ("M3", "M03", "M4", "M04"):
-                    out += linenumber(values) + format_outstring(outstring) + "\n"
+                    out += linenumber(values) + format_outstring(values, outstring) + "\n"
                     out += (
                         linenumber(values)
-                        + format_outstring(["G4", "P%s" % values["SPINDLE_WAIT"]])
+                        + format_outstring(values, ["G4", "P%s" % values["SPINDLE_WAIT"]])
                         + "\n"
                     )
                     outstring = []
@@ -679,7 +680,10 @@ def parse(values, pathobj):
                     if values["OUTPUT_COMMENTS"]:
                         # convert the tool change to a comment
                         comment = create_comment(
-                            format_outstring(outstring), values["COMMENT_SYMBOL"]
+                            values["COMMAND_SPACE"]
+                            + format_outstring(values, outstring)
+                            + values["COMMAND_SPACE"],
+                            values["COMMENT_SYMBOL"],
                         )
                         out += linenumber(values) + comment + "\n"
                         outstring = []
@@ -693,7 +697,9 @@ def parse(values, pathobj):
             if command in values["SUPPRESS_COMMANDS"]:
                 if values["OUTPUT_COMMENTS"]:
                     # convert the command to a comment
-                    comment = create_comment(format_outstring(outstring), values["COMMENT_SYMBOL"])
+                    comment = create_comment(
+                        format_outstring(values, outstring), values["COMMENT_SYMBOL"]
+                    )
                     out += linenumber(values) + comment + "\n"
                 # remove the command
                 outstring = []
@@ -783,7 +789,7 @@ def export_common(values, objectslist, filename):
                         "T{}={}".format(item.ToolNumber, item.Name), values["COMMENT_SYMBOL"]
                     )
                     gcode += linenumber(values) + comment + "\n"
-        comment = create_comment("begin preamble", values["COMMENT_SYMBOL"])
+        comment = create_comment("Begin preamble", values["COMMENT_SYMBOL"])
         gcode += linenumber(values) + comment + "\n"
     for line in values["PREAMBLE"].splitlines(False):
         gcode += linenumber(values) + line + "\n"
@@ -793,7 +799,7 @@ def export_common(values, objectslist, filename):
     elif "G91" in values["PREAMBLE"]:
         values["MOTION_MODE"] = "G91"
     else:
-        gcode += linenumber() + values["MOTION_MODE"] + "\n"
+        gcode += linenumber(values) + values["MOTION_MODE"] + "\n"
     if "G21" in values["PREAMBLE"]:
         values["UNITS"] = "G21"
         values["UNIT_FORMAT"] = "mm"
@@ -831,14 +837,14 @@ def export_common(values, objectslist, filename):
         if values["OUTPUT_COMMENTS"]:
             if values["SHOW_OPERATION_LABELS"]:
                 comment = create_comment(
-                    "begin operation: %s" % obj.Label, values["COMMENT_SYMBOL"]
+                    "Begin operation: %s" % obj.Label, values["COMMENT_SYMBOL"]
                 )
             else:
-                comment = create_comment("begin operation", values["COMMENT_SYMBOL"])
+                comment = create_comment("Begin operation", values["COMMENT_SYMBOL"])
             gcode += linenumber(values) + comment + "\n"
             if values["SHOW_MACHINE_UNITS"]:
                 comment = create_comment(
-                    "machine units: %s" % values["UNIT_SPEED_FORMAT"], values["COMMENT_SYMBOL"]
+                    "Machine units: %s" % values["UNIT_SPEED_FORMAT"], values["COMMENT_SYMBOL"]
                 )
                 gcode += linenumber(values) + comment + "\n"
         for line in values["PRE_OPERATION"].splitlines(False):
@@ -885,7 +891,7 @@ def export_common(values, objectslist, filename):
                 gcode += linenumber(values) + "M9" + "\n"
 
     if values["RETURN_TO"]:
-        gcode += linenumber() + "G0 X%s Y%s\n" % tuple(values["RETURN_TO"])
+        gcode += linenumber(values) + "G0 X%s Y%s\n" % tuple(values["RETURN_TO"])
 
     # do the post_amble
     if values["OUTPUT_BCNC"]:
@@ -896,7 +902,7 @@ def export_common(values, objectslist, filename):
         comment = create_comment("Block-enable: 1", values["COMMENT_SYMBOL"])
         gcode += linenumber(values) + comment + "\n"
     if values["OUTPUT_COMMENTS"]:
-        comment = create_comment("begin postamble", values["COMMENT_SYMBOL"])
+        comment = create_comment("Begin postamble", values["COMMENT_SYMBOL"])
         gcode += linenumber(values) + comment + "\n"
     for line in values["TOOLRETURN"].splitlines(False):
         gcode += linenumber(values) + line + "\n"
