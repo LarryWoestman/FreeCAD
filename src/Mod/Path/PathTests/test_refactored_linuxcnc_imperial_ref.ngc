@@ -1,3 +1,7 @@
+(Exported by FreeCAD)
+(Post Processor: refactored_linuxcnc_post)
+(Cam File: boxtest1.fcstd)
+(Output Time:2022-06-02 00:28:40.470003)
 (Begin preamble)
 G17 G54 G40 G49 G80 G90
 G20

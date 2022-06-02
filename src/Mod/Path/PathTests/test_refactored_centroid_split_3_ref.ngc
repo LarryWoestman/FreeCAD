@@ -1,3 +1,7 @@
+;Exported by FreeCAD
+;Post Processor: refactored_centroid_post
+;Cam File: boxtest1.fcstd
+;Output Time:2022-06-02 00:31:51.808235
 G90 G80 G40 G49
 ;T2=_mm_Endmill005
 ;Begin preamble

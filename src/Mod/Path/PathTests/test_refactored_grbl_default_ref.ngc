@@ -1,30 +1,32 @@
 (Exported by FreeCAD)
-(Post Processor: grbl_post)
-(Output Time:2022-06-02 00:53:16.714851)
+(Post Processor: refactored_grbl_post)
+(Cam File: boxtest1.fcstd)
+(Output Time:2022-06-02 00:18:53.232314)
 (Begin preamble)
 G17 G90
 G21
-(Begin operation: G55)
-(Path: G55)
-G55
+(Begin operation: G54)
+(Path: G54)
+G54
 G0 Z9.000
-(Finish operation: G55)
-(Begin operation: 5mm Endmill006)
-(Path: 5mm Endmill006)
-(5mm Endmill006)
+(Finish operation: G54)
+(Begin operation: 5mm Endmill001)
+(Path: 5mm Endmill001)
+(5mm Endmill001)
 (Begin toolchange)
-( M6 T2 )
+( M6 T1 )
 M3 S123
-(Finish operation: 5mm Endmill006)
-(Begin operation: Profile002)
-(Path: Profile002)
-(Profile002)
+(Finish operation: 5mm Endmill001)
+(Begin operation: Profile)
+(Path: Profile)
+(Profile)
 (Compensated Tool Path. Diameter: 5.0)
 G0 Z9.000
 G0 X0.000 Y0.000
-G0 X-2.500 Y0.000
-G0 X-2.500 Y0.000 Z7.000
-G1 X-2.500 Y0.000 Z-1.000 F340.200
+G0 Y-2.500
+G0 Y-2.500 Z7.000
+G1 X0.000 Y-2.500 Z-1.000 F340.200
+G2 X-2.500 Y0.000 Z-1.000 I0.000 J2.500 K0.000 F140.400
 G1 X-2.500 Y3.000 Z-1.000 F140.400
 G2 X0.000 Y5.500 Z-1.000 I2.500 J0.000 K0.000 F140.400
 G1 X3.000 Y5.500 Z-1.000 F140.400
@@ -32,10 +34,9 @@ G2 X5.500 Y3.000 Z-1.000 I0.000 J-2.500 K0.000 F140.400
 G1 X5.500 Y0.000 Z-1.000 F140.400
 G2 X3.000 Y-2.500 Z-1.000 I-2.500 J0.000 K0.000 F140.400
 G1 X0.000 Y-2.500 Z-1.000 F140.400
-G2 X-2.500 Y0.000 Z-1.000 I0.000 J2.500 K0.000 F140.400
 G0 Z9.000
 G0 Z9.000
-(Finish operation: Profile002)
+(Finish operation: Profile)
 (Begin postamble)
 M5
 G17 G90

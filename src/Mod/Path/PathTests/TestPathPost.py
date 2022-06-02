@@ -78,14 +78,16 @@ class TestPathPost(unittest.TestCase):
         tests_to_perform = (
             # (freecad_document, job_name, postprocessor_arguments, output_file_id)
             #
-            # test in metric mode (default)
-            ("boxtest1", "Job", "--no-header --no-show-editor", "metric"),
+            # test with all of the defaults (metric mode, etc.)
+            ("boxtest1", "Job", "--no-show-editor", "default"),
             # test in Imperial mode
-            ("boxtest1", "Job", "--no-header --no-show-editor --inches", "imperial"),
+            ("boxtest1", "Job", "--no-show-editor --inches", "imperial"),
             # test in metric, G55, M4, the other way around the part
-            ("boxtest1", "Job001", "--no-header --no-show-editor", "other_way"),
+            ("boxtest1", "Job001", "--no-show-editor", "other_way"),
             # test in metric, split by fixtures, G54, G55, G56
-            ("boxtest1", "Job002", "--no-header --no-show-editor", "split%s"),
+            ("boxtest1", "Job002", "--no-show-editor", "split%s"),
+            # test in metric mode without the header
+            ("boxtest1", "Job", "--no-header --no-show-editor", "no_header"),
         )
         #
         # The postprocessors to test.
@@ -93,9 +95,9 @@ class TestPathPost(unittest.TestCase):
         # to test.
         #
         postprocessors_to_test = (
-            # "centroid",
-            # "grbl",
-            # "linuxcnc",
+            "centroid",
+            "grbl",
+            "linuxcnc",
             "refactored_centroid",
             "refactored_linuxcnc",
             "refactored_grbl",
@@ -153,10 +155,14 @@ class TestPathPost(unittest.TestCase):
                         reference_gcode = fp.read()
                     if not reference_gcode:
                         print("no reference gcode")
-                    if gcode != reference_gcode:
-                        msg = "".join(
-                            difflib.ndiff(gcode.splitlines(True), reference_gcode.splitlines(True))
-                        )
+                    # Remove the "Output Time:" line in the header from the comparison
+                    # if it is present because it changes with every test.
+                    gcode_lines = [i for i in gcode.splitlines(True) if "Output Time:" not in i]
+                    reference_gcode_lines = [
+                        i for i in reference_gcode.splitlines(True) if "Output Time:" not in i
+                    ]
+                    if gcode_lines != reference_gcode_lines:
+                        msg = "".join(difflib.ndiff(gcode_lines, reference_gcode_lines))
                         self.fail(
                             os.path.basename(output_filename) + " output doesn't match:\n" + msg
                         )

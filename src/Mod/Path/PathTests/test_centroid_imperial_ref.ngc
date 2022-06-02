@@ -1,24 +1,22 @@
 ;Exported by FreeCAD
-;Post Processor: refactored_centroid_post
-;Cam File: boxtest1.fcstd
-;Output Time:2022-06-02 00:27:58.487165
+;Post Processor: centroid_post
+;CAM file: boxtest1.fcstd
+;Output Time: 2022-06-02 01:00:42.659995
 G90 G80 G40 G49
 ;T1=_mm_Endmill
-;Begin preamble
+;begin preamble
 G53 G00 G17
-G90
 G20
-;Begin operation
+;begin operation
 G54
 G0 Z0.3543
-;End operation: G54
-;Begin operation
+;end operation: G54
+;begin operation
 ;5mm Endmill001
-;Begin toolchange
 M6 T1
 M3 S123
-;End operation: 5mm Endmill001
-;Begin operation
+;end operation: 5mm Endmill001
+;begin operation
 ;Profile
 ;Compensated Tool Path. Diameter: 5.0
 G0 Z0.3543
@@ -36,8 +34,8 @@ G2 X0.1181 Y-0.0984 Z-0.0394 I-0.0984 J0.0000 F5.5
 G1 X0.0000 Y-0.0984 Z-0.0394 F5.5
 G0 Z0.3543
 G0 Z0.3543
-;End operation: Profile
-;Begin postamble
+;end operation: Profile
+;begin postamble
 M5
 M25
 G49 H0
