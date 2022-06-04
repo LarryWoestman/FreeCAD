@@ -37,73 +37,96 @@ import shlex
 
 def init_shared_arguments(machine_name, preamble, postamble):
     """Initialize the shared arguments for postprocessors."""
-    parser = argparse.ArgumentParser(prog=machine_name, add_help=False)
-    parser.add_argument(
+    parser = argparse.ArgumentParser(prog=machine_name, usage=argparse.SUPPRESS, add_help=False)
+    shared = parser.add_argument_group("Arguments that are shared with all postprocessors")
+    shared.add_argument(
         "--metric", action="store_true", help="Convert output for Metric mode (G21) (default)"
     )
-    parser.add_argument(
+    shared.add_argument(
         "--inches", action="store_true", help="Convert output for US imperial mode (G20)"
     )
-    parser.add_argument("--comments", action="store_true", help="Output comments (default)")
-    parser.add_argument("--no-comments", action="store_true", help="Suppress comment output")
-    parser.add_argument("--header", action="store_true", help="Output headers (default)")
-    parser.add_argument("--no-header", action="store_true", help="Suppress header output")
-    parser.add_argument("--line-numbers", action="store_true", help="Prefix with line numbers")
-    parser.add_argument(
+    shared.add_argument("--comments", action="store_true", help="Output comments (default)")
+    shared.add_argument("--no-comments", action="store_true", help="Suppress comment output")
+    shared.add_argument("--header", action="store_true", help="Output headers (default)")
+    shared.add_argument("--no-header", action="store_true", help="Suppress header output")
+    shared.add_argument("--line-numbers", action="store_true", help="Prefix with line numbers")
+    shared.add_argument(
         "--no-line-numbers",
         action="store_true",
         help="Don't prefix with line numbers (default)",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--modal",
         action="store_true",
         help="Don't output the G-command name if it is the same as the previous line.",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--no-modal",
         action="store_true",
         help="Output the G-command name even if it is the same as the previous line (default)",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--axis-modal",
         action="store_true",
         help="Don't output axis values if they are the same as the previous line",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--no-axis-modal",
         action="store_true",
         help="Output axis values even if they are the same as the previous line (default)",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--show-editor",
         action="store_true",
         help="Pop up editor before writing output (default)",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--no-show-editor",
         action="store_true",
         help="Don't pop up editor before writing output",
     )
-    parser.add_argument(
-        "--tlo",
+    shared.add_argument(
+        "--translate_drill",
         action="store_true",
-        help="Output tool length offset (G43) following tool changes (default)",
+        help="Translate drill cycles G81, G82 & G83 into G0/G1 movements",
     )
-    parser.add_argument(
-        "--no-tlo",
+    shared.add_argument(
+        "--no-translate_drill",
         action="store_true",
-        help="Suppress tool length offset (G43) following tool changes",
+        help="Don't translate drill cycles G81, G82 & G83 into G0/G1 movements (default)",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--postamble",
         help='Set commands to be issued after the last command, default="' + postamble + '"',
     )
-    parser.add_argument(
+    shared.add_argument(
         "--preamble",
         help='Set commands to be issued before the first command, default="' + preamble + '"',
     )
-    parser.add_argument(
-        "--precision", default="3", help="Number of digits of precision, default = 3"
+    shared.add_argument(
+        "--precision",
+        default=-1,
+        type=int,
+        help="Number of digits of precision, default is 3 for metric or 4 for inches",
+    )
+    shared.add_argument(
+        "--return-to",
+        default="",
+        help="Move to the specified x,y,z coordinates at the end, e.g. --return-to=0,0,0 (default is do not move)",
+    )
+    shared.add_argument(
+        "--wait-for-spindle",
+        type=float,
+        default=0.0,
+        help="Time to wait (in seconds) after M3, M4 (default = 0.0)",
+    )
+    shared.add_argument(
+        "--bcnc",
+        action="store_true",
+        help="Add Job operations as bCNC block headers. Consider suppressing comments by adding --no-comments",
+    )
+    shared.add_argument(
+        "--no-bcnc", action="store_true", help="Suppress bCNC block header output (default)"
     )
     return parser
 
@@ -112,6 +135,33 @@ def process_shared_arguments(values, parser, argstring):
     """Process the arguments to the postprocessor."""
     try:
         args = parser.parse_args(shlex.split(argstring))
+        if args.metric:
+            values["UNITS"] = "G21"
+            values["AXIS_PRECISION"] = 3
+            values["FEED_PRECISION"] = 3
+        if args.inches:
+            values["UNITS"] = "G20"
+            values["AXIS_PRECISION"] = 4
+            values["FEED_PRECISION"] = 4
+        # Process the "--precision" option after the "--metric"
+        # and "--inches" options to handle default precision correctly.
+        if args.precision == -1:
+            if values["UNITS"] == "G21":
+                values["AXIS_PRECISION"] = 3
+                values["FEED_PRECISION"] = 3
+            if values["UNITS"] == "G20":
+                values["AXIS_PRECISION"] = 4
+                values["FEED_PRECISION"] = 4
+        else:
+            values["AXIS_PRECISION"] = args.precision
+            values["FEED_PRECISION"] = args.precision
+        # Make sure that the unit and unit speed formats match the units
+        if values["UNITS"] == "G21":
+            values["UNIT_SPEED_FORMAT"] = "mm/min"
+            values["UNIT_FORMAT"] = "mm"
+        if values["UNITS"] == "G20":
+            values["UNIT_SPEED_FORMAT"] = "in/min"
+            values["UNIT_FORMAT"] = "in"
         if args.comments:
             values["OUTPUT_COMMENTS"] = True
         if args.no_comments:
@@ -124,49 +174,37 @@ def process_shared_arguments(values, parser, argstring):
             values["OUTPUT_LINE_NUMBERS"] = True
         if args.no_line_numbers:
             values["OUTPUT_LINE_NUMBERS"] = False
-        if args.show_editor:
-            values["SHOW_EDITOR"] = True
-        if args.no_show_editor:
-            values["SHOW_EDITOR"] = False
-        if args.preamble is not None:
-            values["PREAMBLE"] = args.preamble
-        if args.postamble is not None:
-            values["POSTAMBLE"] = args.postamble
-        if args.metric:
-            values["UNITS"] = "G21"
-            values["UNIT_SPEED_FORMAT"] = "mm/min"
-            values["UNIT_FORMAT"] = "mm"
-            values["AXIS_PRECISION"] = 3
-            values["FEED_PRECISION"] = 3
-        #
-        # A bit of possible argument ordering problem here:
-        # args.precicion defaults to 3, which matches the
-        # default precision for metric but not the default
-        # precision for inches.  So we need to check for
-        # inches after we check for args.precision.
-        # How to override the inches precision?
-        #
-        if args.precision is not None:
-            values["AXIS_PRECISION"] = args.precision
-            values["FEED_PRECISION"] = args.precision
-        if args.inches:
-            values["UNITS"] = "G20"
-            values["UNIT_SPEED_FORMAT"] = "in/min"
-            values["UNIT_FORMAT"] = "in"
-            values["AXIS_PRECISION"] = 4
-            values["FEED_PRECISION"] = 4
         if args.modal:
             values["MODAL"] = True
         if args.no_modal:
             values["MODAL"] = False
-        if args.tlo:
-            values["USE_TLO"] = True
-        if args.no_tlo:
-            values["USE_TLO"] = False
         if args.axis_modal:
             values["OUTPUT_DOUBLES"] = False
         if args.no_axis_modal:
             values["OUTPUT_DOUBLES"] = True
+        if args.show_editor:
+            values["SHOW_EDITOR"] = True
+        if args.no_show_editor:
+            values["SHOW_EDITOR"] = False
+        if args.translate_drill:
+            values["TRANSLATE_DRILL_CYCLES"] = True
+        if args.no_translate_drill:
+            values["TRANSLATE_DRILL_CYCLES"] = False
+        if args.postamble is not None:
+            values["POSTAMBLE"] = args.postamble
+        if args.preamble is not None:
+            values["PREAMBLE"] = args.preamble
+        if args.return_to != "":
+            values["RETURN_TO"] = [int(v) for v in args.return_to.split(",")]
+            if len(values["RETURN_TO"]) != 3:
+                values["RETURN_TO"] = None
+                print("--return-to coordinates must be specified as <x>,<y>,<z>, ignoring")
+        if args.wait_for_spindle > 0.0:
+            values["SPINDLE_WAIT"] = args.wait_for_spindle
+        if args.bcnc:
+            values["OUTPUT_BCNC"] = True
+        if args.no_bcnc:
+            values["OUTPUT_BCNC"] = False
 
     except Exception:
         return (False, None)

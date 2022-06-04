@@ -207,7 +207,7 @@ def export_common(values, objectslist, filename):
                 gcode += PostUtilsParse.linenumber(values) + "M9" + "\n"
 
     if values["RETURN_TO"]:
-        gcode += PostUtilsParse.linenumber(values) + "G0 X%s Y%s\n" % tuple(values["RETURN_TO"])
+        gcode += PostUtilsParse.linenumber(values) + "G0 X%s Y%s Z%s\n" % tuple(values["RETURN_TO"])
 
     # do the post_amble
     if values["OUTPUT_BCNC"]:

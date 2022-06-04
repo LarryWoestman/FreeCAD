@@ -100,7 +100,7 @@ class TestPathPost(unittest.TestCase):
             # "linuxcnc",
             # "refactored_centroid",
             "refactored_linuxcnc",
-            # "refactored_grbl",
+            "refactored_grbl",
         )
         #
         # Enough of the path to where the tests are stored so that

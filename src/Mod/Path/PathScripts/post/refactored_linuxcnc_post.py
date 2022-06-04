@@ -59,10 +59,30 @@ FreeCAD, via the GUI importer or via python scripts with:
 import refactored_linuxcnc_post
 refactored_linuxcnc_post.export(object,"/path/to/file.ncc","")
 """
+# Parser arguments list & definition
 parser = PostUtilsArguments.init_shared_arguments(MACHINE_NAME, PREAMBLE, POSTAMBLE)
 #
-# Add any additional arguments that are not shared here.
+# Add any additional arguments that are not shared with other postprocessors here.
 #
+linuxcnc_specific = parser.add_argument_group("LinuxCNC specific arguments")
+linuxcnc_specific.add_argument(
+    "--tlo",
+    action="store_true",
+    help="Output tool length offset (G43) following tool changes (default)",
+)
+linuxcnc_specific.add_argument(
+    "--no-tlo",
+    action="store_true",
+    help="Suppress tool length offset (G43) following tool changes",
+)
+linuxcnc_specific.add_argument(
+    "--tool-change",
+    action="store_true",
+    help="Insert M6 and any other tool change G-code for all tool changes (default)",
+)
+linuxcnc_specific.add_argument(
+    "--no-tool-change", action="store_true", help="Convert M6 to a comment for all tool changes"
+)
 TOOLTIP_ARGS = parser.format_help()
 # G21 for metric, G20 for US standard
 UNITS = "G21"
@@ -76,7 +96,7 @@ def export(objectslist, filename, argstring):
     global PREAMBLE
     global UNITS
 
-#    print(parser.format_help())
+    # print(parser.format_help())
 
     #
     # Holds various values that are used throughout the postprocessor code.
@@ -88,6 +108,8 @@ def export(objectslist, filename, argstring):
     # in the init_shared_values routine.
     #
     values["ENABLE_COOLANT"] = True
+    # output tool change gcode defaults to True for linuxcnc
+    values["OUTPUT_TOOL_CHANGE"] = True
     # the order of parameters
     # linuxcnc doesn't want K properties on XY plane; Arcs need work.
     values["PARAMETER_ORDER"] = [
@@ -126,6 +148,15 @@ def export(objectslist, filename, argstring):
     #     values["example"] = False
     # if args.example is not None:  # for an argument with a value:  --example 1234
     #     values["example"] = args.example
+    #
+    if args.tlo:
+        values["USE_TLO"] = True
+    if args.no_tlo:
+        values["USE_TLO"] = False
+    if args.tool_change:
+        values["OUTPUT_TOOL_CHANGE"] = True
+    if args.no_tool_change:
+        values["OUTPUT_TOOL_CHANGE"] = False
     #
     # Update the global variables that might have been modified
     # while processing the arguments.
