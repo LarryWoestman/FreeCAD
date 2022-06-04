@@ -46,7 +46,7 @@ from PathScripts import PostUtils
 #
 CORNER_MAX = {"x": 500, "y": 300, "z": 300}
 CORNER_MIN = {"x": 0, "y": 0, "z": 0}
-MACHINE_NAME = "grbl"
+MACHINE_NAME = "Grbl"
 # default postamble text will appear following the last operation.
 POSTAMBLE = """M5
 G17 G90
@@ -64,27 +64,6 @@ refactored_grbl_post.export(object, "/path/to/file.ncc")
 
 # Parser arguments list & definition
 parser = argparse.ArgumentParser(prog=MACHINE_NAME, add_help=False)
-parser.add_argument("--comments", action="store_true", help="output comment (default)")
-parser.add_argument("--no-comments", action="store_true", help="suppress comment output")
-parser.add_argument("--header", action="store_true", help="output headers (default)")
-parser.add_argument("--no-header", action="store_true", help="suppress header output")
-parser.add_argument("--line-numbers", action="store_true", help="prefix with line numbers")
-parser.add_argument(
-    "--no-line-numbers",
-    action="store_true",
-    help="don't prefix with line numbers (default)",
-)
-parser.add_argument(
-    "--show-editor",
-    action="store_true",
-    help="pop up editor before writing output (default)",
-)
-parser.add_argument(
-    "--no-show-editor",
-    action="store_true",
-    help="don't pop up editor before writing output",
-)
-parser.add_argument("--precision", default="3", help="number of digits of precision, default=3")
 parser.add_argument(
     "--translate_drill",
     action="store_true",
@@ -94,17 +73,6 @@ parser.add_argument(
     "--no-translate_drill",
     action="store_true",
     help="don't translate drill cycles G81, G82 & G83 in G0/G1 movements (default)",
-)
-parser.add_argument(
-    "--preamble",
-    help='set commands to be issued before the first command, default="G17 G90"',
-)
-parser.add_argument(
-    "--postamble",
-    help='set commands to be issued after the last command, default="M5\nG17 G90\n;M2"',
-)
-parser.add_argument(
-    "--inches", action="store_true", help="Convert output for US imperial mode (G20)"
 )
 parser.add_argument("--tool-change", action="store_true", help="Insert M6 for all tool changes")
 parser.add_argument(
@@ -129,6 +97,8 @@ parser.add_argument(
 TOOLTIP_ARGS = parser.format_help()
 # G21 for metric, G20 for us standard
 UNITS = "G21"
+
+print(TOOLTIP_ARGS)
 
 
 def processArguments(values, argstring):
