@@ -26,7 +26,8 @@
 
 from __future__ import print_function
 
-from PathScripts import PostUtils
+from PathScripts import PostUtilsArguments
+from PathScripts import PostUtilsExport
 
 #
 # The following variables need to be global variables
@@ -39,9 +40,16 @@ from PathScripts import PostUtils
 #    TOOLTIP_ARGS
 #    UNITS
 #
+#    POSTAMBLE and PREAMBLE need to be defined before TOOLTIP_ARGS
+#    can be defined, so they end up being global variables also.
+#
 CORNER_MAX = {"x": 609.6, "y": 152.4, "z": 304.8}
 CORNER_MIN = {"x": -609.6, "y": -152.4, "z": 0}
 MACHINE_NAME = "Centroid"
+# Postamble text will appear following the last operation.
+POSTAMBLE = """M99"""
+# Preamble text will appear at the beginning of the GCODE output file.
+PREAMBLE = """G53 G00 G17"""
 TOOLTIP = """
 This is a postprocessor file for the Path workbench. It is used to
 take a pseudo-gcode fragment outputted by a Path object, and output
@@ -52,69 +60,66 @@ FreeCAD, via the GUI importer or via python scripts with:
 import refactored_centroid_post
 refactored_centroid_post.export(object,"/path/to/file.ncc","")
 """
-TOOLTIP_ARGS = """
-Arguments for centroid:
-    --header,--no-header             ... output headers (--header)
-    --comments,--no-comments         ... output comments (--comments)
-    --line-numbers,--no-line-numbers ... prefix with line numbers (--no-lin-numbers)
-    --show-editor, --no-show-editor  ... pop up editor before writing output(--show-editor)
-    --feed-precision=1               ... number of digits of precision for feed rate.  Default=1
-    --axis-precision=4               ... number of digits of precision for axis moves.  Default=4
-    --inches                         ... Convert output for US imperial mode (G20)
-"""
+# Parser arguments list & definition
+parser = PostUtilsArguments.init_shared_arguments(MACHINE_NAME, PREAMBLE, POSTAMBLE)
+#
+# Add any additional arguments that are not shared with other postprocessors here.
+#
+centroid_specific = parser.add_argument_group("Centroid specific arguments")
+centroid_specific.add_argument(
+    "--axis-precision",
+    default=-1,
+    type=int,
+    help="Number of digits of precision for axis moves, default is 4",
+)
+centroid_specific.add_argument(
+    "--feed-precision",
+    default=-1,
+    type=int,
+    help="Number of digits of precision for feed rate, default is 1",
+)
+centroid_specific.add_argument(
+    "--tlo",
+    action="store_true",
+    help="Output tool length offset (G43) following tool changes",
+)
+centroid_specific.add_argument(
+    "--no-tlo",
+    action="store_true",
+    help="Suppress tool length offset (G43) following tool changes (default)",
+)
+centroid_specific.add_argument(
+    "--tool-change",
+    action="store_true",
+    help="Insert M6 and any other tool change G-code for all tool changes (default)",
+)
+centroid_specific.add_argument(
+    "--no-tool-change", action="store_true", help="Convert M6 to a comment for all tool changes"
+)
+TOOLTIP_ARGS = parser.format_help()
 # G21 for metric, G20 for US standard
 UNITS = "G21"
-
-
-def processArguments(values, argstring):
-    """Process the arguments to the postprocessor."""
-    #
-    global UNITS
-
-    try:
-        for arg in argstring.split():
-            if arg == "--header":
-                values["OUTPUT_HEADER"] = True
-            elif arg == "--no-header":
-                values["OUTPUT_HEADER"] = False
-            elif arg == "--comments":
-                values["OUTPUT_COMMENTS"] = True
-            elif arg == "--no-comments":
-                values["OUTPUT_COMMENTS"] = False
-            elif arg == "--line-numbers":
-                values["OUTPUT_LINE_NUMBERS"] = True
-            elif arg == "--no-line-numbers":
-                values["OUTPUT_LINE_NUMBERS"] = False
-            elif arg == "--show-editor":
-                values["SHOW_EDITOR"] = True
-            elif arg == "--no-show-editor":
-                values["SHOW_EDITOR"] = False
-            elif arg.split("=")[0] == "--axis-precision":
-                values["AXIS_PRECISION"] = arg.split("=")[1]
-            elif arg.split("=")[0] == "--feed-precision":
-                values["FEED_PRECISION"] = arg.split("=")[1]
-            elif arg == "--inches":
-                UNITS = "G20"
-                values["UNIT_SPEED_FORMAT"] = "in/min"
-                values["UNIT_FORMAT"] = "in"
-
-    except Exception:
-        return False
-
-    return True
 
 
 def export(objectslist, filename, argstring):
     """Postprocess the objects in objectslist to filename."""
     #
+    global parser
+    global POSTAMBLE
+    global PREAMBLE
     global UNITS
+
+    # print(parser.format_help())
 
     #
     # Holds various values that are used throughout the postprocessor code.
     #
     values = {}
-    PostUtils.init_shared_values(values)
-
+    PostUtilsArguments.init_shared_values(values)
+    #
+    # Set any values here that need to override the default values set
+    # in the init_shared_values routine.
+    #
     values["AXIS_PRECISION"] = 4
     values["COMMENT_SYMBOL"] = ";"
     values["FEED_PRECISION"] = 1
@@ -138,22 +143,11 @@ def export(objectslist, filename, argstring):
         "L",
         "H",
     ]
-    # Postamble text will appear following the last operation.
-    values[
-        "POSTAMBLE"
-    ] = """M99
-"""
+    values["POSTAMBLE"] = POSTAMBLE
     values["POSTPROCESSOR_FILE_NAME"] = __name__
-    # Preamble text will appear at the beginning of the GCODE output file.
-    values[
-        "PREAMBLE"
-    ] = """G53 G00 G17
-"""
+    values["PREAMBLE"] = PREAMBLE
     values["REMOVE_MESSAGES"] = False
-    values[
-        "SAFETYBLOCK"
-    ] = """G90 G80 G40 G49
-"""
+    values["SAFETYBLOCK"] = """G90 G80 G40 G49"""
     values["SHOW_MACHINE_UNITS"] = False
     values["SHOW_OPERATION_LABELS"] = False
     values["STOP_SPINDLE_FOR_TOOL_CHANGE"] = False
@@ -163,17 +157,55 @@ def export(objectslist, filename, argstring):
         "TOOLRETURN"
     ] = """M5
 M25
-G49 H0
-"""
+G49 H0"""
     # if true G43 will be output following tool changes
     values["USE_TLO"] = False
+    values["UNITS"] = UNITS
     # ZAXISRETURN = """G91 G28 X0 Z0
     # G90
     # """
 
-    if not processArguments(values, argstring):
+    (flag, args) = PostUtilsArguments.process_shared_arguments(values, parser, argstring)
+    if not flag:
         return None
+    #
+    # Process any additional arguments here
+    #
+    # if args.example:  # for an argument that is a flag:  --example
+    #     values["example"] = True
+    # if args.no_example:  # for an argument that is a flag:  --no-example
+    #     values["example"] = False
+    # if args.example is not None:  # for an argument with a value:  --example 1234
+    #     values["example"] = args.example
+    #
+    if args.axis_precision == -1:
+        if values["UNITS"] == "G21":
+            values["AXIS_PRECISION"] = 4
+        if values["UNITS"] == "G20":
+            values["AXIS_PRECISION"] = 4
+    else:
+        values["AXIS_PRECISION"] = args.axis_precision
+    if args.feed_precision == -1:
+        if values["UNITS"] == "G21":
+            values["FEED_PRECISION"] = 1
+        if values["UNITS"] == "G20":
+            values["FEED_PRECISION"] = 1
+    else:
+        values["FEED_PRECISION"] = args.feed_precision
+    if args.tlo:
+        values["USE_TLO"] = True
+    if args.no_tlo:
+        values["USE_TLO"] = False
+    if args.tool_change:
+        values["OUTPUT_TOOL_CHANGE"] = True
+    if args.no_tool_change:
+        values["OUTPUT_TOOL_CHANGE"] = False
+    #
+    # Update the global variables that might have been modified
+    # while processing the arguments.
+    #
+    POSTAMBLE = values["POSTAMBLE"]
+    PREAMBLE = values["PREAMBLE"]
+    UNITS = values["UNITS"]
 
-    values["UNITS"] = UNITS
-
-    return PostUtils.export_common(values, objectslist, filename)
+    return PostUtilsExport.export_common(values, objectslist, filename)

@@ -95,10 +95,10 @@ class TestPathPost(unittest.TestCase):
         # to test.
         #
         postprocessors_to_test = (
-            # "centroid",
-            # "grbl",
-            # "linuxcnc",
-            # "refactored_centroid",
+            "centroid",
+            "grbl",
+            "linuxcnc",
+            "refactored_centroid",
             "refactored_linuxcnc",
             "refactored_grbl",
         )

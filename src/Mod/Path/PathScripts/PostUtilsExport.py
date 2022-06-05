@@ -103,18 +103,18 @@ def export_common(values, objectslist, filename):
         gcode += PostUtilsParse.linenumber(values) + comment + "\n"
     for line in values["PREAMBLE"].splitlines(False):
         gcode += PostUtilsParse.linenumber(values) + line + "\n"
-    # verify if PREAMBLE have changed MOTION_MODE or UNITS
-    if "G90" in values["PREAMBLE"]:
+    # verify if PREAMBLE or SAFETYBLOCK have changed MOTION_MODE or UNITS
+    if "G90" in values["PREAMBLE"] or "G90" in values["SAFETYBLOCK"]:
         values["MOTION_MODE"] = "G90"
-    elif "G91" in values["PREAMBLE"]:
+    elif "G91" in values["PREAMBLE"] or "G91" in values["SAFETYBLOCK"]:
         values["MOTION_MODE"] = "G91"
     else:
         gcode += PostUtilsParse.linenumber(values) + values["MOTION_MODE"] + "\n"
-    if "G21" in values["PREAMBLE"]:
+    if "G21" in values["PREAMBLE"] or "G21" in values["SAFETYBLOCK"]:
         values["UNITS"] = "G21"
         values["UNIT_FORMAT"] = "mm"
         values["UNIT_SPEED_FORMAT"] = "mm/min"
-    elif "G20" in values["PREAMBLE"]:
+    elif "G20" in values["PREAMBLE"] or "G20" in values["SAFETYBLOCK"]:
         values["UNITS"] = "G20"
         values["UNIT_FORMAT"] = "in"
         values["UNIT_SPEED_FORMAT"] = "in/min"

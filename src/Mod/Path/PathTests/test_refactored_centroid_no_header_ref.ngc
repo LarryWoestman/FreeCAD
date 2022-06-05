@@ -2,7 +2,6 @@ G90 G80 G40 G49
 ;T1=_mm_Endmill
 ;Begin preamble
 G53 G00 G17
-G90
 G21
 ;Begin operation
 G54
