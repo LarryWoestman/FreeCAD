@@ -176,6 +176,9 @@ SET(PathScripts_post_SRCS
     PathScripts/post/opensbp_post.py
     PathScripts/post/opensbp_pre.py
     PathScripts/post/philips_post.py
+    PathScripts/post/refactored_centroid_post.py
+    PathScripts/post/refactored_grbl_post.py
+    PathScripts/post/refactored_linuxcnc_post.py
     PathScripts/post/rml_post.py
     PathScripts/post/rrf_post.py
     PathScripts/post/slic3r_pre.py
@@ -222,8 +225,9 @@ SET(Tools_Shape_SRCS
 
 SET(PathTests_SRCS
     PathTests/__init__.py
-    PathTests/boxtest.fcstd
+    PathTests/boxtest1.fcstd
     PathTests/Drilling_1.FCStd
+    PathTests/drill_test1.FCStd
     PathTests/PathTestUtils.py
     PathTests/test_adaptive.fcstd
     PathTests/test_centroid_00.ngc
@@ -236,6 +240,7 @@ SET(PathTests_SRCS
     PathTests/test_centroid_split_3_ref.ngc
     PathTests/test_geomop.fcstd
     PathTests/test_grbl_default_ref.ngc
+    PathTests/test_grbl_drill_translate_ref.ngc
     PathTests/test_grbl_imperial_ref.ngc
     PathTests/test_grbl_no_header_ref.ngc
     PathTests/test_grbl_other_way_ref.ngc
@@ -260,6 +265,7 @@ SET(PathTests_SRCS
     PathTests/test_refactored_centroid_split_2_ref.ngc
     PathTests/test_refactored_centroid_split_3_ref.ngc
     PathTests/test_refactored_grbl_default_ref.ngc
+    PathTests/test_refactored_grbl_drill_translate_ref.ngc
     PathTests/test_refactored_grbl_imperial_ref.ngc
     PathTests/test_refactored_grbl_no_header_ref.ngc
     PathTests/test_refactored_grbl_other_way_ref.ngc

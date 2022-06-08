@@ -41,15 +41,32 @@ from PathScripts import PostUtilsExport
 #    POSTAMBLE and PREAMBLE need to be defined before TOOLTIP_ARGS
 #    can be defined, so they end up being global variables also.
 #
+# What are these variables used for?
+# They are referenced in PathPostPostprocessor.PostProcessor.load(),
+# don't appear to be used anywhere that I can find after that.
+#
 CORNER_MAX = {"x": 500, "y": 300, "z": 300}
 CORNER_MIN = {"x": 0, "y": 0, "z": 0}
+#
+# Used in the argparser code that parses the options
+# and sets up the tooltip arguments.
+#
 MACHINE_NAME = "LinuxCNC"
-# Postamble text will appear following the last operation.
+#
+# Any commands in this value will be output as the last commands
+# in the G-code file.
+#
 POSTAMBLE = """M05
 G17 G54 G90 G80 G40
 M2"""
-# Preamble text will appear at the beginning of the GCODE output file.
+#
+# Any commands in this value will be output after the header and
+# safety block at the beginning of the G-code file.
+#
 PREAMBLE = """G17 G54 G40 G49 G80 G90"""
+#
+#
+#
 TOOLTIP = """This is a postprocessor file for the Path workbench. It is used to
 take a pseudo-gcode fragment outputted by a Path object, and output
 real GCode suitable for a linuxcnc 3 axis mill. This postprocessor, once placed
@@ -59,12 +76,20 @@ FreeCAD, via the GUI importer or via python scripts with:
 import refactored_linuxcnc_post
 refactored_linuxcnc_post.export(object,"/path/to/file.ncc","")
 """
+#
 # Parser arguments list & definition
+#
 parser = PostUtilsArguments.init_shared_arguments(MACHINE_NAME, PREAMBLE, POSTAMBLE)
 #
 # Add any additional arguments that are not shared with other postprocessors here.
 #
 linuxcnc_specific = parser.add_argument_group("LinuxCNC specific arguments")
+linuxcnc_specific.add_argument(
+    "--precision",
+    default=-1,
+    type=int,
+    help="Number of digits of precision for both feed rate and axis moves, default is 3 for metric or 4 for inches",
+)
 linuxcnc_specific.add_argument(
     "--tlo",
     action="store_true",
@@ -84,7 +109,9 @@ linuxcnc_specific.add_argument(
     "--no-tool-change", action="store_true", help="Convert M6 to a comment for all tool changes"
 )
 TOOLTIP_ARGS = parser.format_help()
-# G21 for metric, G20 for US standard
+#
+# Default to metric mode
+#
 UNITS = "G21"
 
 
@@ -142,13 +169,16 @@ def export(objectslist, filename, argstring):
     #
     # Process any additional arguments here
     #
-    # if args.example:  # for an argument that is a flag:  --example
-    #     values["example"] = True
-    # if args.no_example:  # for an argument that is a flag:  --no-example
-    #     values["example"] = False
-    # if args.example is not None:  # for an argument with a value:  --example 1234
-    #     values["example"] = args.example
-    #
+    if args.precision == -1:
+        if values["UNITS"] == "G21":
+            values["AXIS_PRECISION"] = 3
+            values["FEED_PRECISION"] = 3
+        if values["UNITS"] == "G20":
+            values["AXIS_PRECISION"] = 4
+            values["FEED_PRECISION"] = 4
+    else:
+        values["AXIS_PRECISION"] = args.precision
+        values["FEED_PRECISION"] = args.precision
     if args.tlo:
         values["USE_TLO"] = True
     if args.no_tlo:

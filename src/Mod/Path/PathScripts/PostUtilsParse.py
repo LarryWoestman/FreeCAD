@@ -56,7 +56,12 @@ def drill_translate(values, outstring, cmd, params):
     if values["OUTPUT_COMMENTS"]:  # Comment the original command
         trBuff += (
             linenumber(values)
-            + create_comment(format_outstring(values, outstring), values["COMMENT_SYMBOL"])
+            + create_comment(
+                values["COMMAND_SPACE"]
+                + format_outstring(values, outstring)
+                + values["COMMAND_SPACE"],
+                values["COMMENT_SYMBOL"],
+            )
             + "\n"
         )
 
@@ -112,7 +117,7 @@ def drill_translate(values, outstring, cmd, params):
             )
             + "\n"
         )
-        print(strF_Feedrate)
+        # print(strF_Feedrate)
 
         # preliminary movement(s)
         if values["CURRENT_Z"] < RETRACT_Z:
@@ -296,7 +301,7 @@ def parse(values, pathobj):
                     elif param == "H":
                         outstring.append(param + str(int(c.Parameters["H"])))
                     elif param in ["D", "L", "P"]:
-                        outstring.append(param + str(int(c.Parameters[param])))
+                        outstring.append(param + str(c.Parameters[param]))
                     elif param == "S":
                         outstring.append(
                             param
@@ -388,7 +393,10 @@ def parse(values, pathobj):
                 if values["OUTPUT_COMMENTS"]:
                     # convert the command to a comment
                     comment = create_comment(
-                        format_outstring(values, outstring), values["COMMENT_SYMBOL"]
+                        values["COMMAND_SPACE"]
+                        + format_outstring(values, outstring)
+                        + values["COMMAND_SPACE"],
+                        values["COMMENT_SYMBOL"],
                     )
                     out += linenumber(values) + comment + "\n"
                 # remove the command

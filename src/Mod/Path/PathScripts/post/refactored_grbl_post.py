@@ -44,27 +44,52 @@ from PathScripts import PostUtilsExport
 #    POSTAMBLE and PREAMBLE need to be defined before TOOLTIP_ARGS
 #    can be defined, so they end up being global variables also.
 #
+# What are these variables used for?
+# They are referenced in PathPostPostprocessor.PostProcessor.load(),
+# don't appear to be used anywhere that I can find after that.
+#
 CORNER_MAX = {"x": 500, "y": 300, "z": 300}
 CORNER_MIN = {"x": 0, "y": 0, "z": 0}
+#
+# Used in the argparser code that parses the options
+# and sets up the tooltip arguments.
+#
 MACHINE_NAME = "GRBL"
-# default postamble text will appear following the last operation.
+#
+# Any commands in this value will be output as the last commands
+# in the G-code file.
+#
 POSTAMBLE = """M5
 G17 G90
 M2"""
-# default preamble text will appear at the beginning of the gCode output file.
+#
+# Any commands in this value will be output after the header and
+# safety block at the beginning of the G-code file.
+#
 PREAMBLE = """G17 G90"""
+#
+#
+#
 TOOLTIP = """
 Generate g-code from a Path that is compatible with the grbl controller:
 
 import refactored_grbl_post
 refactored_grbl_post.export(object, "/path/to/file.ncc")
 """
+#
 # Parser arguments list & definition
+#
 parser = PostUtilsArguments.init_shared_arguments(MACHINE_NAME, PREAMBLE, POSTAMBLE)
 #
 # Add any additional arguments that are not shared with other postprocessors here.
 #
 grbl_specific = parser.add_argument_group("GRBL specific arguments")
+grbl_specific.add_argument(
+    "--precision",
+    default=-1,
+    type=int,
+    help="Number of digits of precision for both feed rate and axis moves, default is 3 for metric or 4 for inches",
+)
 grbl_specific.add_argument(
     "--tlo",
     action="store_true",
@@ -86,7 +111,9 @@ grbl_specific.add_argument(
     help="Convert M6 to a comment for all tool changes (default)",
 )
 TOOLTIP_ARGS = parser.format_help()
-# G21 for metric, G20 for US standard
+#
+# Default to metric mode
+#
 UNITS = "G21"
 
 
@@ -109,10 +136,22 @@ def export(objectslist, filename, argstring):
     # Set any values here that need to override the default values set
     # in the init_shared_values routine.
     #
+    # If this is set to True, then commands that are placed in
+    # comments that look like (MC_RUN_COMMAND: blah) will be output.
+    #
     values["ENABLE_MACHINE_SPECIFIC_COMMANDS"] = True
+    #
+    # Default to outputting Path labels at the beginning of each Path.
+    #
     values["OUTPUT_PATH_LABELS"] = True
-    # default don't output M6 tool changes (comment it) as grbl currently does not handle it
+    #
+    # Default to not outputting M6 tool changes (comment it) as grbl currently does not handle it
+    #
     values["OUTPUT_TOOL_CHANGE"] = False
+    #
+    # The order of the parameters.
+    # Arcs may only work on the XY plane (this needs to be verified).
+    #
     values["PARAMETER_ORDER"] = [
         "X",
         "Y",
@@ -134,11 +173,18 @@ def export(objectslist, filename, argstring):
         "L",
         "P",
     ]
+    #
+    # Do not show the current machine units just before the PRE_OPERATION.
+    #
+    values["SHOW_MACHINE_UNITS"] = False
+    #
+    # Default to not outputting a G43 following tool changes
+    #
+    values["USE_TLO"] = False
+
     values["POSTAMBLE"] = POSTAMBLE
     values["POSTPROCESSOR_FILE_NAME"] = __name__
     values["PREAMBLE"] = PREAMBLE
-    values["SHOW_MACHINE_UNITS"] = False
-    values["USE_TLO"] = False
     values["UNITS"] = UNITS
 
     (flag, args) = PostUtilsArguments.process_shared_arguments(values, parser, argstring)
@@ -147,13 +193,16 @@ def export(objectslist, filename, argstring):
     #
     # Process any additional arguments here
     #
-    # if args.example:  # for an argument that is a flag:  --example
-    #     values["example"] = True
-    # if args.no_example:  # for an argument that is a flag:  --no-example
-    #     values["example"] = False
-    # if args.example is not None:  # for an argument with a value:  --example 1234
-    #     values["example"] = args.example
-    #
+    if args.precision == -1:
+        if values["UNITS"] == "G21":
+            values["AXIS_PRECISION"] = 3
+            values["FEED_PRECISION"] = 3
+        if values["UNITS"] == "G20":
+            values["AXIS_PRECISION"] = 4
+            values["FEED_PRECISION"] = 4
+    else:
+        values["AXIS_PRECISION"] = args.precision
+        values["FEED_PRECISION"] = args.precision
     if args.tlo:
         values["USE_TLO"] = True
     if args.no_tlo:

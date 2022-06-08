@@ -34,9 +34,9 @@ from PathScripts import PostUtils
 
 from PathScripts.PathPostProcessor import PostProcessor
 
-# If KEEP_DEBUG_OUTPUT is False, remove the gcode file after the test.
-# If KEEP_DEBUG_OUTPUT is True, then leave the gcode file behind so it
-# can be looked at easily.
+# If KEEP_DEBUG_OUTPUT is False, remove the gcode file after the test succeeds.
+# If KEEP_DEBUG_OUTPUT is True or the test fails leave the gcode file behind
+# so it can be looked at easily.
 KEEP_DEBUG_OUTPUT = False
 
 PathPost.LOG_MODULE = PathLog.thisModule()
@@ -66,6 +66,10 @@ class TestPathPost(unittest.TestCase):
         """Tear down after the postprocessor tests."""
         pass
 
+    #
+    # You can run just this test using:
+    # ./FreeCAD -c -t PathTests.TestPathPost.TestPathPost.test_postprocessors
+    #
     def test_postprocessors(self):
         """Test the postprocessors."""
         #
@@ -76,18 +80,27 @@ class TestPathPost(unittest.TestCase):
         # to use.
         #
         tests_to_perform = (
-            # (freecad_document, job_name, postprocessor_arguments, output_file_id)
+            # (output_file_id, freecad_document, job_name, postprocessor_arguments,
+            #  postprocessor_list)
             #
             # test with all of the defaults (metric mode, etc.)
-            ("boxtest1", "Job", "--no-show-editor", "default"),
+            # ("default", "boxtest1", "Job", "--no-show-editor", ()),
             # test in Imperial mode
-            ("boxtest1", "Job", "--no-show-editor --inches", "imperial"),
+            # ("imperial", "boxtest1", "Job", "--no-show-editor --inches", ()),
             # test in metric, G55, M4, the other way around the part
-            ("boxtest1", "Job001", "--no-show-editor", "other_way"),
+            # ("other_way", "boxtest1", "Job001", "--no-show-editor", ()),
             # test in metric, split by fixtures, G54, G55, G56
-            ("boxtest1", "Job002", "--no-show-editor", "split%s"),
+            # ("split%s", "boxtest1", "Job002", "--no-show-editor", ()),
             # test in metric mode without the header
-            ("boxtest1", "Job", "--no-header --no-show-editor", "no_header"),
+            # ("no_header", "boxtest1", "Job", "--no-header --no-show-editor", ()),
+            # test translating G81, G82, and G83 to G00 and G01 commands
+            (
+                "drill_translate",
+                "drill_test1",
+                "Job",
+                "--no-show-editor --translate_drill",
+                ("grbl", "refactored_grbl"),
+            ),
         )
         #
         # The postprocessors to test.
@@ -95,11 +108,11 @@ class TestPathPost(unittest.TestCase):
         # to test.
         #
         postprocessors_to_test = (
-            "centroid",
+            # "centroid",
             "grbl",
-            "linuxcnc",
-            "refactored_centroid",
-            "refactored_linuxcnc",
+            # "linuxcnc",
+            # "refactored_centroid",
+            # "refactored_linuxcnc",
             "refactored_grbl",
         )
         #
@@ -116,10 +129,11 @@ class TestPathPost(unittest.TestCase):
         #
         current_document = ""
         for (
+            output_file_id,
             freecad_document,
             job_name,
             postprocessor_arguments,
-            output_file_id,
+            postprocessor_list,
         ) in tests_to_perform:
             if current_document != freecad_document:
                 if current_document != "":
@@ -133,42 +147,46 @@ class TestPathPost(unittest.TestCase):
             # Create a list of lists of objects to be written by the postprocessor.
             postlist = PathPost.CommandPathPost.buildPostList(self, job)
             for postprocessor_id in postprocessors_to_test:
-                print(
-                    "\nRunning %s test on %s postprocessor:\n" % (output_file_id, postprocessor_id)
-                )
-                processor = PostProcessor.load(postprocessor_id)
-                output_file_pattern = "test_%s_%s.ngc" % (postprocessor_id, output_file_id)
-                output_file_path = FreeCAD.getHomePath() + PATHTESTS_LOCATION + output_file_pattern
-                self.subpart = 1
-                for slist in postlist:
-                    output_filename = PathPost.CommandPathPost.processFileNameSubstitutions(
-                        self, job, output_file_path
+                if postprocessor_list == () or postprocessor_id in postprocessor_list:
+                    print(
+                        "\nRunning %s test on %s postprocessor:\n"
+                        % (output_file_id, postprocessor_id)
                     )
-                    # print("output file: " + output_filename)
-                    file_path, extension = os.path.splitext(output_filename)
-                    reference_file_name = "%s%s%s" % (file_path, "_ref", extension)
-                    # print("reference file: " + reference_file_name)
-                    gcode = processor.export(slist, output_filename, postprocessor_arguments)
-                    if not gcode:
-                        print("no gcode")
-                    with open(reference_file_name, "r") as fp:
-                        reference_gcode = fp.read()
-                    if not reference_gcode:
-                        print("no reference gcode")
-                    # Remove the "Output Time:" line in the header from the comparison
-                    # if it is present because it changes with every test.
-                    gcode_lines = [i for i in gcode.splitlines(True) if "Output Time:" not in i]
-                    reference_gcode_lines = [
-                        i for i in reference_gcode.splitlines(True) if "Output Time:" not in i
-                    ]
-                    if gcode_lines != reference_gcode_lines:
-                        msg = "".join(difflib.ndiff(gcode_lines, reference_gcode_lines))
-                        self.fail(
-                            os.path.basename(output_filename) + " output doesn't match:\n" + msg
+                    processor = PostProcessor.load(postprocessor_id)
+                    output_file_pattern = "test_%s_%s.ngc" % (postprocessor_id, output_file_id)
+                    output_file_path = (
+                        FreeCAD.getHomePath() + PATHTESTS_LOCATION + output_file_pattern
+                    )
+                    self.subpart = 1
+                    for slist in postlist:
+                        output_filename = PathPost.CommandPathPost.processFileNameSubstitutions(
+                            self, job, output_file_path
                         )
-                    if not KEEP_DEBUG_OUTPUT:
-                        os.remove(output_filename)
-                self.subpart = 1
+                        # print("output file: " + output_filename)
+                        file_path, extension = os.path.splitext(output_filename)
+                        reference_file_name = "%s%s%s" % (file_path, "_ref", extension)
+                        # print("reference file: " + reference_file_name)
+                        gcode = processor.export(slist, output_filename, postprocessor_arguments)
+                        if not gcode:
+                            print("no gcode")
+                        with open(reference_file_name, "r") as fp:
+                            reference_gcode = fp.read()
+                        if not reference_gcode:
+                            print("no reference gcode")
+                        # Remove the "Output Time:" line in the header from the comparison
+                        # if it is present because it changes with every test.
+                        gcode_lines = [i for i in gcode.splitlines(True) if "Output Time:" not in i]
+                        reference_gcode_lines = [
+                            i for i in reference_gcode.splitlines(True) if "Output Time:" not in i
+                        ]
+                        if gcode_lines != reference_gcode_lines:
+                            msg = "".join(difflib.ndiff(gcode_lines, reference_gcode_lines))
+                            self.fail(
+                                os.path.basename(output_filename) + " output doesn't match:\n" + msg
+                            )
+                        if not KEEP_DEBUG_OUTPUT:
+                            os.remove(output_filename)
+                    self.subpart = 1
         if current_document != "":
             FreeCAD.closeDocument(current_document)
 
