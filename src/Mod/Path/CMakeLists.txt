@@ -230,7 +230,6 @@ SET(PathTests_SRCS
     PathTests/drill_test1.FCStd
     PathTests/PathTestUtils.py
     PathTests/test_adaptive.fcstd
-    PathTests/test_centroid_00.ngc
     PathTests/test_centroid_default_ref.ngc
     PathTests/test_centroid_imperial_ref.ngc
     PathTests/test_centroid_no_header_ref.ngc
@@ -256,7 +255,6 @@ SET(PathTests_SRCS
     PathTests/test_linuxcnc_split_1_ref.ngc
     PathTests/test_linuxcnc_split_2_ref.ngc
     PathTests/test_linuxcnc_split_3_ref.ngc
-    PathTests/test_refactored_centroid_00.ngc
     PathTests/test_refactored_centroid_default_ref.ngc
     PathTests/test_refactored_centroid_imperial_ref.ngc
     PathTests/test_refactored_centroid_no_header_ref.ngc
