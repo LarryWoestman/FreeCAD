@@ -84,15 +84,15 @@ class TestPathPost(unittest.TestCase):
             #  postprocessor_list)
             #
             # test with all of the defaults (metric mode, etc.)
-            # ("default", "boxtest1", "Job", "--no-show-editor", ()),
+            ("default", "boxtest1", "Job", "--no-show-editor", ()),
             # test in Imperial mode
-            # ("imperial", "boxtest1", "Job", "--no-show-editor --inches", ()),
+            ("imperial", "boxtest1", "Job", "--no-show-editor --inches", ()),
             # test in metric, G55, M4, the other way around the part
-            # ("other_way", "boxtest1", "Job001", "--no-show-editor", ()),
+            ("other_way", "boxtest1", "Job001", "--no-show-editor", ()),
             # test in metric, split by fixtures, G54, G55, G56
-            # ("split%s", "boxtest1", "Job002", "--no-show-editor", ()),
+            ("split%s", "boxtest1", "Job002", "--no-show-editor", ()),
             # test in metric mode without the header
-            # ("no_header", "boxtest1", "Job", "--no-header --no-show-editor", ()),
+            ("no_header", "boxtest1", "Job", "--no-header --no-show-editor", ()),
             # test translating G81, G82, and G83 to G00 and G01 commands
             (
                 "drill_translate",
@@ -108,12 +108,12 @@ class TestPathPost(unittest.TestCase):
         # to test.
         #
         postprocessors_to_test = (
-            # "centroid",
+            "centroid",
             "grbl",
-            # "linuxcnc",
-            # "refactored_centroid",
-            # "refactored_linuxcnc",
+            "linuxcnc",
+            "refactored_centroid",
             "refactored_grbl",
+            "refactored_linuxcnc",
         )
         #
         # Enough of the path to where the tests are stored so that
