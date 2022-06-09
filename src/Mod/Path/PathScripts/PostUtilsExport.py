@@ -41,6 +41,32 @@ from PathScripts import PostUtilsParse
 if open.__module__ in ["__builtin__", "io"]:
     pythonopen = open
 
+#
+# This routine processes things in the following order:
+#
+#       OUTPUT_HEADER
+#       SAFETYBLOCK
+#       LIST_TOOLS_IN_PREAMBLE
+#       PREAMBLE
+#       OUTPUT_BCNC
+#       SHOW_OPERATION_LABELS
+#       SHOW_MACHINE_UNITS
+#       PRE_OPERATION
+#       ENABLE_COOLANT (coolant on)
+#       operation(s)
+#       POST_OPERATION
+#       ENABLE_COOLANT (coolant off)
+#       RETURN_TO
+#       OUTPUT_BCNC
+#       TOOLRETURN
+#       SAFETYBLOCK
+#       POSTAMBLE
+#       SHOW_EDITOR
+#
+# The names in all caps may be enabled/disabled/modified by setting
+# the corresponding value in the postprocessor.
+#
+
 
 def export_common(values, objectslist, filename):
     """Do the common parts of postprocessing the objects in objectslist to filename."""

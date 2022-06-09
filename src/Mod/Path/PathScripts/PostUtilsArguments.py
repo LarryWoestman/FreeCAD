@@ -104,12 +104,6 @@ def init_shared_arguments(machine_name, preamble, postamble):
         help='Set commands to be issued before the first command, default="' + preamble + '"',
     )
     shared.add_argument(
-        "--precision",
-        default=-1,
-        type=int,
-        help="Number of digits of precision, default is 3 for metric or 4 for inches",
-    )
-    shared.add_argument(
         "--return-to",
         default="",
         help="Move to the specified x,y,z coordinates at the end, e.g. --return-to=0,0,0 (default is do not move)",
@@ -137,31 +131,14 @@ def process_shared_arguments(values, parser, argstring):
         args = parser.parse_args(shlex.split(argstring))
         if args.metric:
             values["UNITS"] = "G21"
-            values["AXIS_PRECISION"] = 3
-            values["FEED_PRECISION"] = 3
         if args.inches:
             values["UNITS"] = "G20"
-            values["AXIS_PRECISION"] = 4
-            values["FEED_PRECISION"] = 4
-        # Process the "--precision" option after the "--metric"
-        # and "--inches" options to handle default precision correctly.
-        if args.precision == -1:
-            if values["UNITS"] == "G21":
-                values["AXIS_PRECISION"] = 3
-                values["FEED_PRECISION"] = 3
-            if values["UNITS"] == "G20":
-                values["AXIS_PRECISION"] = 4
-                values["FEED_PRECISION"] = 4
-        else:
-            values["AXIS_PRECISION"] = args.precision
-            values["FEED_PRECISION"] = args.precision
-        # Make sure that the unit and unit speed formats match the units
         if values["UNITS"] == "G21":
-            values["UNIT_SPEED_FORMAT"] = "mm/min"
             values["UNIT_FORMAT"] = "mm"
+            values["UNIT_SPEED_FORMAT"] = "mm/min"
         if values["UNITS"] == "G20":
-            values["UNIT_SPEED_FORMAT"] = "in/min"
             values["UNIT_FORMAT"] = "in"
+            values["UNIT_SPEED_FORMAT"] = "in/min"
         if args.comments:
             values["OUTPUT_COMMENTS"] = True
         if args.no_comments:
@@ -214,19 +191,45 @@ def process_shared_arguments(values, parser, argstring):
 
 def init_shared_values(values):
     """Initialize the default values in postprocessors."""
-    # Default precision for metric
+    #
+    # Default axis precision for metric is 3 digits after the decimal point.
     # (see http://linuxcnc.org/docs/2.7/html/gcode/overview.html#_g_code_best_practices)
+    #
     values["AXIS_PRECISION"] = 3
+    #
+    # If this is set to "", all spaces are removed from between commands and parameters.
+    #
     values["COMMAND_SPACE"] = " "
+    #
+    # The character that indicates a comment.  While "(" is the most common,
+    # ";" is also used.
+    #
     values["COMMENT_SYMBOL"] = "("
-    # Global variables storing current position
+    #
+    # Variables storing the current postion for the drill_translate routine.
+    #
     values["CURRENT_X"] = 0
     values["CURRENT_Y"] = 0
     values["CURRENT_Z"] = 0
+    #
+    # If TRANSLATE_DRILL_CYCLES is True, these are the drill cycles
+    # that get translated to G0 and G1 commands.
+    #
     values["DRILL_CYCLES_TO_TRANSLATE"] = ("G81", "G82", "G83")
-    # Default value of drill retractations (CURRENT_Z) other possible value is G99
+    #
+    # The default value of drill retractations (CURRENT_Z).
+    # The other possible value is G99.
+    #
     values["DRILL_RETRACT_MODE"] = "G98"
+    #
+    # If this is set to True, then M7, M8, and M9 commands
+    # to enable/disable coolant will be output.
+    #
     values["ENABLE_COOLANT"] = False
+    #
+    # If this is set to True, then commands that are placed in
+    # comments that look like (MC_RUN_COMMAND: blah) will be output.
+    #
     values["ENABLE_MACHINE_SPECIFIC_COMMANDS"] = False
     #
     # By default the line ending characters of the output file(s)
@@ -235,15 +238,36 @@ def init_shared_values(values):
     # value, set this variable to "\n" or "\r\n" instead.
     #
     values["END_OF_LINE_CHARACTERS"] = os.linesep
+    #
+    # The default precision for feed precision is also set to 3 for metric.
+    #
     values["FEED_PRECISION"] = 3
+    #
+    # This value shows up in the post_op comment as "Finish operation:".
+    # At least one postprocessor changes it to "End" to produce "End operation:".
+    #
     values["FINISH_LABEL"] = "Finish"
-    # line number increment
+    #
+    # The line number increment value
+    #
     values["LINE_INCREMENT"] = 10
-    # line number starting value
+    #
+    # The line number starting value
+    #
     values["line_number"] = 100
+    #
+    # If this value is True, then a list of tool numbers
+    # with their labels are output just before the preamble.
+    #
     values["LIST_TOOLS_IN_PREAMBLE"] = False
-    # if true commands are suppressed if they are the same as the previous line.
+    #
+    # If this value is true G-code commands are suppressed if they are
+    # the same as the previous line.
+    #
     values["MODAL"] = False
+    #
+    # This defines the motion commands that might change the X, Y, and Z position.
+    #
     values["MOTION_COMMANDS"] = [
         "G0",
         "G00",
@@ -254,20 +278,51 @@ def init_shared_values(values):
         "G3",
         "G03",
     ]
-    # Motion gCode commands definition
+    #
+    # Keeps track of the motion mode currently in use.
     # G90 for absolute moves, G91 for relative
+    #
     values["MOTION_MODE"] = "G90"
-    # default doesn't add bCNC operation block headers in output gCode file
+    #
+    # If True adds bCNC operation block headers to the output G-code file.
+    #
     values["OUTPUT_BCNC"] = False
+    #
+    # If True output comments.  If False comments are suppressed.
+    #
     values["OUTPUT_COMMENTS"] = True
-    # if false duplicate axis values are suppressed if they are the same as the previous line.
+    #
+    # if False duplicate axis values are suppressed if they are the same as the previous line.
+    #
     values["OUTPUT_DOUBLES"] = True
+    #
+    # If True output a header at the front of the G-code file.
+    # The header contains comments similar to:
+    #   (Exported by FreeCAD)
+    #   (Post Processor: centroid_post)
+    #   (Cam File: box.fcstd)
+    #   (Output Time:2020-01-01 01:02:03.123456)
+    #
     values["OUTPUT_HEADER"] = True
+    #
+    # If True output line numbers at the front of each line.
+    # If False do not output line numbers.
+    #
     values["OUTPUT_LINE_NUMBERS"] = False
+    #
+    # If True output Path labels at the beginning of each Path.
+    #
     values["OUTPUT_PATH_LABELS"] = False
-    # output tool change gcode
+    #
+    # If True output tool change G-code for M6 commands followed
+    # by any commands in the "TOOL_CHANGE" value.
+    # If False output the M6 command as a comment and do not output
+    # any commands in the "TOOL_CHANGE" value.
+    #
     values["OUTPUT_TOOL_CHANGE"] = True
+    #
     # This list controls the order of parameters in a line during output.
+    #
     values["PARAMETER_ORDER"] = [
         "X",
         "Y",
@@ -289,34 +344,97 @@ def init_shared_values(values):
         "L",
         "P",
     ]
+    #
+    # Any commands in this value will be output as the last commands
+    # in the G-code file.
+    #
     values["POSTAMBLE"] = """"""
-    # Post operation text will be inserted after every operation
+    #
+    # Any commands in this value will be output after the operation(s).
+    #
     values["POST_OPERATION"] = """"""
+    #
+    # Any commands in this value will be output after the header and
+    # safety block at the beginning of the G-code file.
+    #
     values["PREAMBLE"] = """"""
-    # Pre operation text will be inserted before every operation
+    #
+    # Any commands in this value will be output before the operation(s).
+    #
     values["PRE_OPERATION"] = """"""
+    #
+    # Defines which G-code commands are considered "rapid" moves.
+    #
     values["RAPID_MOVES"] = ["G0", "G00"]
-    # Rapid moves gCode commands definition
+    #
+    # If True suppress any messages.
+    #
     values["REMOVE_MESSAGES"] = True
-    # no movements after end of program
+    #
+    # Any commands in this value are output after the operation(s)
+    # and post_operation commands are output but before the
+    # TOOLRETURN, SAFETYBLOCK, and POSTAMBLE.
+    #
     values["RETURN_TO"] = None
+    #
+    # Any commands in this value are output after the header but before the preamble,
+    # then again after the TOOLRETURN but before the POSTAMBLE.
+    #
     values["SAFETYBLOCK"] = """"""
+    #
+    # If True then the G-code editor widget is shown before writing
+    # the G-code to the file.
+    #
     values["SHOW_EDITOR"] = True
+    #
+    # If True then the current machine units are output just before the PRE_OPERATION.
+    #
     values["SHOW_MACHINE_UNITS"] = True
+    #
+    # If True then the current operation label is output just before the PRE_OPERATION.
+    #
     values["SHOW_OPERATION_LABELS"] = True
+    #
+    # The number of decimal places to use when outputting the speed (S) parameter.
+    #
     values["SPINDLE_DECIMALS"] = 0
-    # no waiting after M3 / M4 by default
-    values["SPINDLE_WAIT"] = 0
+    #
+    # The amount of time (in seconds) to wait after turning on the spindle
+    # using an M3 or M4 command (a floating point number).
+    #
+    values["SPINDLE_WAIT"] = 0.0
+    #
+    # If true then then an M5 command to stop the spindle is output
+    # after the M6 tool change command and before the TOOL_CHANGE commands.
+    #
     values["STOP_SPINDLE_FOR_TOOL_CHANGE"] = True
-    # These commands are ignored by commenting them out
+    #
+    # These commands are ignored by commenting them out.
+    # Used when replacing the drill commands by G0 and G1 commands, for example.
+    #
     values["SUPPRESS_COMMANDS"] = []
-    # Tool Change commands will be inserted before a tool change
+    #
+    # Any commands in this value are output after the M6 command
+    # when changing at tool (if OUTPUT_TOOL_CHANGE is True).
+    #
     values["TOOL_CHANGE"] = """"""
+    #
+    # Any commands in this value are output after the POST_OPERATION,
+    # RETURN_TO, and OUTPUT_BCNC and before the SAFETYBLOCK and POSTAMBLE.
+    #
     values["TOOLRETURN"] = """"""
-    # If true, G81, G82 & G83 are translated in G0/G1 moves
+    #
+    # If true, G81, G82 & G83 drill moves are translated into G0/G1 moves.
+    #
     values["TRANSLATE_DRILL_CYCLES"] = False
+    #
+    # These values keep track of whether we are in Metric mode (G21)
+    # or inches/imperial mode (G20).
+    #
     values["UNITS"] = "G21"
     values["UNIT_FORMAT"] = "mm"
     values["UNIT_SPEED_FORMAT"] = "mm/min"
-    # if true G43 will be output following tool changes
+    #
+    # If true a tool length command (G43) will be output following tool changes.
+    #
     values["USE_TLO"] = True
