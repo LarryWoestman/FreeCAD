@@ -1,0 +1,98 @@
+(Exported by FreeCAD)
+(Post Processor: refactored_grbl_post)
+(Cam File: drill_test1.fcstd)
+(Output Time:2022-06-09 00:18:58.844236)
+(Begin preamble)
+G17 G90
+G21
+(Begin operation: G54)
+(Path: G54)
+G54
+G0 Z10.000
+(Finish operation: G54)
+(Begin operation: 1mm_Drill001)
+(Path: 1mm_Drill001)
+(1mm_Drill001)
+(Begin toolchange)
+( M6 T2 )
+(Finish operation: 1mm_Drill001)
+(Begin operation: Drilling)
+(Path: Drilling)
+(Drilling)
+(Begin Drilling)
+G0 Z10.000
+G90
+( G99 )
+G0 X1.000 Y1.000
+G0 Z8.000
+( G81 X1.000 Y1.000 Z0.000 F123.000 R5.000 )
+G0 X1.000 Y1.000
+G1 Z5.000 F123.000
+G1 Z0.000 F123.000
+G0 Z5.000
+( G80 )
+G0 Z8.000
+G0 Z10.000
+(Finish operation: Drilling)
+(Begin operation: 2mm_Drill001)
+(Path: 2mm_Drill001)
+(2mm_Drill001)
+(Begin toolchange)
+( M6 T3 )
+(Finish operation: 2mm_Drill001)
+(Begin operation: Drilling001)
+(Path: Drilling001)
+(Drilling001)
+(Begin Drilling)
+G0 Z10.000
+G90
+( G99 )
+G0 X1.500 Y3.750
+G0 Z8.000
+( G83 X1.500 Y3.750 Z0.000 F456.000 Q1.500 R5.000 )
+G0 X1.500 Y3.750
+G1 Z5.000 F456.000
+G1 Z3.500 F456.000
+G0 Z5.000
+G0 Z3.575
+G1 Z2.000 F456.000
+G0 Z5.000
+G0 Z2.075
+G1 Z0.500 F456.000
+G0 Z5.000
+G0 Z0.575
+G1 Z0.000 F456.000
+G0 Z5.000
+( G80 )
+G0 Z8.000
+G0 Z10.000
+(Finish operation: Drilling001)
+(Begin operation: 3mm_Drill001)
+(Path: 3mm_Drill001)
+(3mm_Drill001)
+(Begin toolchange)
+( M6 T4 )
+(Finish operation: 3mm_Drill001)
+(Begin operation: Drilling002)
+(Path: Drilling002)
+(Drilling002)
+(Begin Drilling)
+G0 Z10.000
+G90
+( G99 )
+G0 X3.250 Y1.750
+G0 Z8.000
+( G82 X3.250 Y1.750 Z0.000 F789.000 R5.000 P1.0 )
+G0 X3.250 Y1.750
+G1 Z5.000 F789.000
+G1 Z0.000 F789.000
+G4 P1.0
+G0 Z5.000
+( G80 )
+G0 Z8.000
+G0 Z10.000
+(Finish operation: Drilling002)
+(Begin postamble)
+M5
+G17 G90
+M2

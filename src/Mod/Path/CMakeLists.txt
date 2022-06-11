@@ -141,6 +141,9 @@ SET(PathScripts_SRCS
     PathScripts/PathWaterline.py
     PathScripts/PathWaterlineGui.py
     PathScripts/PostUtils.py
+    PathScripts/PostUtilsArguments.py
+    PathScripts/PostUtilsExport.py
+    PathScripts/PostUtilsParse.py
     PathScripts/__init__.py
 )
 
@@ -173,6 +176,9 @@ SET(PathScripts_post_SRCS
     PathScripts/post/opensbp_post.py
     PathScripts/post/opensbp_pre.py
     PathScripts/post/philips_post.py
+    PathScripts/post/refactored_centroid_post.py
+    PathScripts/post/refactored_grbl_post.py
+    PathScripts/post/refactored_linuxcnc_post.py
     PathScripts/post/rml_post.py
     PathScripts/post/rrf_post.py
     PathScripts/post/slic3r_pre.py
@@ -220,13 +226,59 @@ SET(Tools_Shape_SRCS
 SET(PathTests_SRCS
     PathTests/__init__.py
     PathTests/boxtest.fcstd
+    PathTests/boxtest1.fcstd
     PathTests/Drilling_1.FCStd
+    PathTests/drill_test1.FCStd
     PathTests/PathTestUtils.py
     PathTests/test_adaptive.fcstd
     PathTests/test_centroid_00.ngc
+    PathTests/test_centroid_default_ref.ngc
+    PathTests/test_centroid_imperial_ref.ngc
+    PathTests/test_centroid_no_header_ref.ngc
+    PathTests/test_centroid_other_way_ref.ngc
+    PathTests/test_centroid_split_1_ref.ngc
+    PathTests/test_centroid_split_2_ref.ngc
+    PathTests/test_centroid_split_3_ref.ngc
     PathTests/test_geomop.fcstd
+    PathTests/test_grbl_default_ref.ngc
+    PathTests/test_grbl_drill_translate_ref.ngc
+    PathTests/test_grbl_imperial_ref.ngc
+    PathTests/test_grbl_no_header_ref.ngc
+    PathTests/test_grbl_other_way_ref.ngc
+    PathTests/test_grbl_split_1_ref.ngc
+    PathTests/test_grbl_split_2_ref.ngc
+    PathTests/test_grbl_split_3_ref.ngc
     PathTests/test_holes00.fcstd
     PathTests/test_linuxcnc_00.ngc
+    PathTests/test_linuxcnc_default_ref.ngc
+    PathTests/test_linuxcnc_imperial_ref.ngc
+    PathTests/test_linuxcnc_no_header_ref.ngc
+    PathTests/test_linuxcnc_other_way_ref.ngc
+    PathTests/test_linuxcnc_split_1_ref.ngc
+    PathTests/test_linuxcnc_split_2_ref.ngc
+    PathTests/test_linuxcnc_split_3_ref.ngc
+    PathTests/test_refactored_centroid_default_ref.ngc
+    PathTests/test_refactored_centroid_imperial_ref.ngc
+    PathTests/test_refactored_centroid_no_header_ref.ngc
+    PathTests/test_refactored_centroid_other_way_ref.ngc
+    PathTests/test_refactored_centroid_split_1_ref.ngc
+    PathTests/test_refactored_centroid_split_2_ref.ngc
+    PathTests/test_refactored_centroid_split_3_ref.ngc
+    PathTests/test_refactored_grbl_default_ref.ngc
+    PathTests/test_refactored_grbl_drill_translate_ref.ngc
+    PathTests/test_refactored_grbl_imperial_ref.ngc
+    PathTests/test_refactored_grbl_no_header_ref.ngc
+    PathTests/test_refactored_grbl_other_way_ref.ngc
+    PathTests/test_refactored_grbl_split_1_ref.ngc
+    PathTests/test_refactored_grbl_split_2_ref.ngc
+    PathTests/test_refactored_grbl_split_3_ref.ngc
+    PathTests/test_refactored_linuxcnc_default_ref.ngc
+    PathTests/test_refactored_linuxcnc_imperial_ref.ngc
+    PathTests/test_refactored_linuxcnc_no_header_ref.ngc
+    PathTests/test_refactored_linuxcnc_other_way_ref.ngc
+    PathTests/test_refactored_linuxcnc_split_1_ref.ngc
+    PathTests/test_refactored_linuxcnc_split_2_ref.ngc
+    PathTests/test_refactored_linuxcnc_split_3_ref.ngc
     PathTests/TestPathAdaptive.py
     PathTests/TestPathCore.py
     PathTests/TestPathDeburr.py
@@ -411,4 +463,3 @@ INSTALL(
     DESTINATION
         Mod/Path/Data/Threads
 )
-
