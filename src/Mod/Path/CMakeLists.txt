@@ -225,11 +225,13 @@ SET(Tools_Shape_SRCS
 
 SET(PathTests_SRCS
     PathTests/__init__.py
+    PathTests/boxtest.fcstd
     PathTests/boxtest1.fcstd
     PathTests/Drilling_1.FCStd
     PathTests/drill_test1.FCStd
     PathTests/PathTestUtils.py
     PathTests/test_adaptive.fcstd
+    PathTests/test_centroid_00.ngc
     PathTests/test_centroid_default_ref.ngc
     PathTests/test_centroid_imperial_ref.ngc
     PathTests/test_centroid_no_header_ref.ngc
