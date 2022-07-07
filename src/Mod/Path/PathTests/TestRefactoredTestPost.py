@@ -112,6 +112,27 @@ class TestRefactoredTestPost(PathTestUtils.PathTestBase):
 
 =======
 >>>>>>> 327e6ccf29 (Path:  Added more tests and fixed some parameter handling.)
+    def single_compare(self, path, expected, args, debug=False):
+        """Perform a test with a single comparison."""
+        self.docobj.Path = Path.Path(path)
+        postables = [self.docobj]
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        if debug:
+            print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode, expected)
+
+    def compare_third_line(self, path_string, expected, args, debug=False):
+        """Perform a test with a single comparison only to the third line of the output."""
+        if path_string:
+            self.docobj.Path = Path.Path([Path.Command(path_string)])
+        else:
+            self.docobj.Path = Path.Path([])
+        postables = [self.docobj]
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        if debug:
+            print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[2], expected)
+
     #
     # The tests are organized into groups:
     #
@@ -768,19 +789,6 @@ G4 P1.23456
         """Test G20 command Generation."""
         self.compare_third_line("G20", "G20", "")
 
-    def test01210(self):
-        """Test G21 command Generation."""
-        self.compare_third_line("G21", "G21", "")
-
-    def test01280(self):
-        """Test G28 command Generation."""
-        self.compare_third_line("G28", "G28", "")
-        self.compare_third_line(
-            "G28 X10 Y20 Z30 A40 B50 C60 U70 V80 W90",
-            "G28 X10.000 Y20.000 Z30.000 A40.000 B50.000 C60.000 U70.000 V80.000 W90.000",
-            "",
-        )
-
     def test01281(self):
         """Test G28.1 command Generation."""
         self.compare_third_line("G28.1", "G28.1", "")
@@ -1047,174 +1055,87 @@ G42.1 L3 D0.0486
 
     def test01430(self):
         """Test G43 command Generation."""
-        #
-        c = Path.Command("G43 H1.23456")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G43 H1
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
-
-        c = Path.Command("G43 H0")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G43 H0
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
-
-        c = Path.Command("G43 H1.23456")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G20
-G43 H1
-"""
-        args = "--inches"
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G43 H1.23456", "G43 H1", "")
+        self.compare_third_line("G43 H0", "G43 H0", "")
+        self.compare_third_line("G43 H1.23456", "G43 H1", "--inches")
 
     def test01431(self):
         """Test G43.1 command Generation."""
-        #
-        c = Path.Command("G43.1 X1.234567 Y2.345678 Z3.456789 A4.567891 B5.678912 C6.789123 U7.891234 V8.912345 W9.123456")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G43.1 X1.235 Y2.346 Z3.457 A4.568 B5.679 C6.789 U7.891 V8.912 W9.123
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
-
-        c = Path.Command("G43.1 X1.234567 Y2.345678 Z3.456789 A4.567891 B5.678912 C6.789123 U7.891234 V8.912345 W9.123456")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G20
-G43.1 X0.0486 Y0.0923 Z0.1361 A0.1798 B0.2236 C0.2673 U0.3107 V0.3509 W0.3592
-"""
-        args = "--inches"
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line(
+            "G43.1 X1.234567 Y2.345678 Z3.456789 A4.567891 B5.678912 C6.789123 U7.891234 V8.912345 W9.123456",
+            "G43.1 X1.235 Y2.346 Z3.457 A4.568 B5.679 C6.789 U7.891 V8.912 W9.123",
+            "",
+        )
+        self.compare_third_line(
+            "G43.1 X1.234567 Y2.345678 Z3.456789 A4.567891 B5.678912 C6.789123 U7.891234 V8.912345 W9.123456",
+            "G43.1 X0.0486 Y0.0923 Z0.1361 A0.1798 B0.2236 C0.2673 U0.3107 V0.3509 W0.3592",
+            "--inches",
+        )
 
     def test01432(self):
         """Test G43.2 command Generation."""
-        #
-        c = Path.Command("G43.2 H1.23456")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G43.2 H1
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G43.2 H1.23456", "G43.2 H1", "")
 
     def test01490(self):
         """Test G49 command Generation."""
-        #
-        c = Path.Command("G49")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G49
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G49", "G49", "")
 
     def test01520(self):
         """Test G52 command Generation."""
-        #
-        c = Path.Command("G52 X1.234567 Y2.345678 Z3.456789 A4.567891 B5.678912 C6.789123 U7.891234 V8.912345 W9.123456")
-        c1 = Path.Command("G52 X0 Y0.0 Z0.00 A0.000 B0.0000 C0.00000 U0.000000 V0 W0")
-
-        self.docobj.Path = Path.Path([c, c1])
-        postables = [self.docobj]
-
-        expected = """G90
+        self.single_compare(
+            [
+                Path.Command(
+                    "G52 X1.234567 Y2.345678 Z3.456789 A4.567891 B5.678912 C6.789123 U7.891234 V8.912345 W9.123456"
+                ),
+                Path.Command("G52 X0 Y0.0 Z0.00 A0.000 B0.0000 C0.00000 U0.000000 V0 W0"),
+            ],
+            """G90
 G21
 G52 X1.235 Y2.346 Z3.457 A4.568 B5.679 C6.789 U7.891 V8.912 W9.123
 G52 X0.000 Y0.000 Z0.000 A0.000 B0.000 C0.000 U0.000 V0.000 W0.000
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
-
-        c = Path.Command("G52 X1.234567 Y2.345678 Z3.456789 A4.567891 B5.678912 C6.789123 U7.891234 V8.912345 W9.123456")
-        c1 = Path.Command("G52 X0 Y0.0 Z0.00 A0.000 B0.0000 C0.00000 U0.000000 V0 W0")
-
-        self.docobj.Path = Path.Path([c, c1])
-        postables = [self.docobj]
-
-        expected = """G90
+""",
+            "",
+        )
+        self.single_compare(
+            [
+                Path.Command(
+                    "G52 X1.234567 Y2.345678 Z3.456789 A4.567891 B5.678912 C6.789123 U7.891234 V8.912345 W9.123456"
+                ),
+                Path.Command("G52 X0 Y0.0 Z0.00 A0.000 B0.0000 C0.00000 U0.000000 V0 W0"),
+            ],
+            """G90
 G20
 G52 X0.0486 Y0.0923 Z0.1361 A0.1798 B0.2236 C0.2673 U0.3107 V0.3509 W0.3592
 G52 X0.0000 Y0.0000 Z0.0000 A0.0000 B0.0000 C0.0000 U0.0000 V0.0000 W0.0000
-"""
-        args = "--inches"
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+""",
+            "--inches",
+        )
 
-#     def test01530(self):
-#         """Test G53 command Generation."""
-#         #
-#         # G53 is handled differently in different gcode interpreters.
-#         # It always means "absolute machine coordinates", but it is
-#         # used like G0 in Centroid and Mach4, and used in front of
-#         # G0 or G1 on the same line in Fanuc, Grbl, LinuxCNC, and Tormach.
-#         # It is not modal in any gcode interpreter I currently know about.
-#         # The current FreeCAD code treats G53 as modal (like G54-G59.9).
-#         # The current refactored postprocessor code does not
-#         # handle having two G-commands on the same line.
-#         #
-#         c = Path.Command("G53 G0 X10 Y20 Z30 A40 B50 C60 U70 V80 W90")
+    #     def test01530(self):
+    #         """Test G53 command Generation."""
+    #         #
+    #         # G53 is handled differently in different gcode interpreters.
+    #         # It always means "absolute machine coordinates", but it is
+    #         # used like G0 in Centroid and Mach4, and used in front of
+    #         # G0 or G1 on the same line in Fanuc, Grbl, LinuxCNC, and Tormach.
+    #         # It is not modal in any gcode interpreter I currently know about.
+    #         # The current FreeCAD code treats G53 as modal (like G54-G59.9).
+    #         # The current refactored postprocessor code does not
+    #         # handle having two G-commands on the same line.
+    #         #
+    #         c = Path.Command("G53 G0 X10 Y20 Z30 A40 B50 C60 U70 V80 W90")
 
-#         self.docobj.Path = Path.Path([c])
-#         postables = [self.docobj]
+    #         self.docobj.Path = Path.Path([c])
+    #         postables = [self.docobj]
 
-#         expected = """G90
-# G21
-# G53 G0 X10.000 Y20.000 Z30.000 A40.000 B50.000 C60.000 U70.000 V80.000 W90.000
-# """
-#         args = ""
-#         gcode = postprocessor.export(postables, "gcode.tmp", args)
-#         print("--------\n" + gcode + "--------\n")
-#         self.assertEqual(gcode, expected)
+    #         expected = """G90
+    # G21
+    # G53 G0 X10.000 Y20.000 Z30.000 A40.000 B50.000 C60.000 U70.000 V80.000 W90.000
+    # """
+    #         args = ""
+    #         gcode = postprocessor.export(postables, "gcode.tmp", args)
+    #         print("--------\n" + gcode + "--------\n")
+    #         self.assertEqual(gcode, expected)
 
     def test01540(self):
         """Test G54 command Generation."""
@@ -1266,87 +1187,23 @@ G54
         # Some gcode interpreters us G54.1 P- to select additional
         # work coordinate systems.
         #
-        c = Path.Command("G54.1 P2.34567")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G54.1 P2
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G54.1 P2.34567", "G54.1 P2", "")
 
     def test01550(self):
         """Test G55 command Generation."""
-        #
-        c = Path.Command("G55")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G55
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G55", "G55", "")
 
     def test01560(self):
         """Test G56 command Generation."""
-        #
-        c = Path.Command("G56")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G56
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G56", "G56", "")
 
     def test01570(self):
         """Test G57 command Generation."""
-        #
-        c = Path.Command("G57")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G57
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G57", "G57", "")
 
     def test01580(self):
         """Test G58 command Generation."""
-        #
-        c = Path.Command("G58")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G58
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G58", "G58", "")
 
     def test01590(self):
         """Test G59 command Generation."""
@@ -2173,235 +2030,420 @@ G59 P2
 
     def test01591(self):
         """Test G59.1 command Generation."""
-        #
-        c = Path.Command("G59.1")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G59.1
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G59.1", "G59.1", "")
 
     def test01592(self):
         """Test G59.2 command Generation."""
-        #
-        c = Path.Command("G59.2")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G59.2
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G59.2", "G59.2", "")
 
     def test01593(self):
         """Test G59.3 command Generation."""
-        #
-        c = Path.Command("G59.3")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G59.3
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G59.3", "G59.3", "")
 
     def test01594(self):
         """Test G59.4 command Generation."""
-        #
-        c = Path.Command("G59.4")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G59.4
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G59.4", "G59.4", "")
 
     def test01595(self):
         """Test G59.5 command Generation."""
-        #
-        c = Path.Command("G59.5")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G59.5
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G59.5", "G59.5", "")
 
     def test01596(self):
         """Test G59.6 command Generation."""
-        #
-        c = Path.Command("G59.6")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G59.6
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G59.6", "G59.6", "")
 
     def test01597(self):
         """Test G59.7 command Generation."""
-        #
-        c = Path.Command("G59.7")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G59.7
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G59.7", "G59.7", "")
 
     def test01598(self):
         """Test G59.8 command Generation."""
-        #
-        c = Path.Command("G59.8")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G59.8
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G59.8", "G59.8", "")
 
     def test01599(self):
         """Test G59.9 command Generation."""
-        #
-        c = Path.Command("G59.9")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G59.9
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G59.9", "G59.9", "")
 
     def test01610(self):
         """Test G61 command Generation."""
-        #
-        c = Path.Command("G61")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G61
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G61", "G61", "")
 
     def test01611(self):
         """Test G61.1 command Generation."""
-        #
-        c = Path.Command("G61.1")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G61.1
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        self.compare_third_line("G61.1", "G61.1", "")
 
     def test01640(self):
         """Test G64 command Generation."""
-        #
-        c = Path.Command("G64")
+        self.compare_third_line("G64", "G64", "")
+        self.compare_third_line("G64 P3.456789", "G64 P3.457", "")
+        self.compare_third_line("G64 P3.456789 Q4.567891", "G64 Q4.568 P3.457", "")
+        self.compare_third_line("G64 P3.456789 Q4.567891", "G64 Q0.1798 P0.1361", "--inches")
 
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
+    def test01810(self):
+        """Test G81 command Generation."""
+        path = [
+            Path.Command("G0 X1 Y2"),
+            Path.Command("G0 Z8"),
+            Path.Command("G90"),
+            Path.Command("G99"),
+            Path.Command("G81 X1 Y2 Z0 F123 R5"),
+            Path.Command("G80"),
+            Path.Command("G90"),
+        ]
+        self.single_compare(
+            path,
+            """G90
 G21
-G64
+G0 X1.000 Y2.000
+G0 Z8.000
+G90
+G99
+G81 X1.000 Y2.000 Z0.000 F7380.000 R5.000
+G80
+G90
+""",
+            "",
+        )
+        self.single_compare(
+            path,
+            """G90
+G21
+G0 X1.000 Y2.000
+G0 Z8.000
+G90
+G0 X1.000 Y2.000
+G1 Z5.000 F7380.000
+G1 Z0.000 F7380.000
+G0 Z5.000
+G90
+""",
+            "--translate_drill",
+        )
+        self.single_compare(
+            path,
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+G0 X1.000 Y2.000
+G0 Z8.000
+G90
+( G99 )
+( G81 X1.000 Y2.000 Z0.000 F7380.000 R5.000 )
+G0 X1.000 Y2.000
+G1 Z5.000 F7380.000
+G1 Z0.000 F7380.000
+G0 Z5.000
+( G80 )
+G90
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--comments --translate_drill",
+        )
+        #
+        # Re-initialize all of the values before doing more tests.
+        #
+        postprocessor.init_values(postprocessor.values)
+        #
+        # Test translate_drill with G81 and G91.
+        path = [
+            Path.Command("G0 X1 Y2"),
+            Path.Command("G0 Z8"),
+            Path.Command("G91"),
+            Path.Command("G99"),
+            Path.Command("G81 X1 Y2 Z0 F123 R5"),
+            Path.Command("G80"),
+            Path.Command("G90"),
+        ]
+        self.single_compare(
+            path,
+            """G90
+G21
+G0 X1.000 Y2.000
+G0 Z8.000
+G91
+G99
+G81 X1.000 Y2.000 Z0.000 F7380.000 R5.000
+G80
+G90
+""",
+            "--no-comments --no-translate_drill",
+        )
+        self.single_compare(
+            path,
+            """G90
+G21
+G0 X1.000 Y2.000
+G0 Z8.000
+G91
+G90
+G0 Z13.000
+G0 X2.000 Y4.000
+G1 Z8.000 F7380.000
+G0 Z13.000
+G91
+G90
+""",
+            "--translate_drill",
+        )
+        self.single_compare(
+            path,
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+G0 X1.000 Y2.000
+G0 Z8.000
+G91
+( G99 )
+( G81 X1.000 Y2.000 Z0.000 F7380.000 R5.000 )
+G90
+G0 Z13.000
+G0 X2.000 Y4.000
+G1 Z8.000 F7380.000
+G0 Z13.000
+G91
+( G80 )
+G90
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--comments --translate_drill",
+        )
+
+    def test01820(self):
+        """Test G82 command Generation."""
+        path = [
+            Path.Command("G0 X1 Y2"),
+            Path.Command("G0 Z8"),
+            Path.Command("G90"),
+            Path.Command("G99"),
+            Path.Command("G82 X1 Y2 Z0 F123 R5 P1.23456"),
+            Path.Command("G80"),
+            Path.Command("G90"),
+        ]
+        self.single_compare(
+            path,
+            """G90
+G21
+G0 X1.000 Y2.000
+G0 Z8.000
+G90
+G99
+G82 X1.000 Y2.000 Z0.000 F7380.000 R5.000 P1.23456
+G80
+G90
+""",
+            "",
+        )
+        self.single_compare(
+            path,
+            """G90
+G21
+G0 X1.000 Y2.000
+G0 Z8.000
+G90
+G0 X1.000 Y2.000
+G1 Z5.000 F7380.000
+G1 Z0.000 F7380.000
+G4 P1.23456
+G0 Z5.000
+G90
+""",
+            "--translate_drill",
+        )
+        self.single_compare(
+            path,
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+G0 X1.000 Y2.000
+G0 Z8.000
+G90
+( G99 )
+( G82 X1.000 Y2.000 Z0.000 F7380.000 R5.000 P1.23456 )
+G0 X1.000 Y2.000
+G1 Z5.000 F7380.000
+G1 Z0.000 F7380.000
+G4 P1.23456
+G0 Z5.000
+( G80 )
+G90
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--comments --translate_drill",
+        )
+        #
+        # Re-initialize all of the values before doing more tests.
+        #
+        postprocessor.init_values(postprocessor.values)
+        #
+        # Test translate_drill with G82 and G91.
+        path = [
+            Path.Command("G0 X1 Y2"),
+            Path.Command("G0 Z8"),
+            Path.Command("G91"),
+            Path.Command("G99"),
+            Path.Command("G82 X1 Y2 Z0 F123 R5 P1.23456"),
+            Path.Command("G80"),
+            Path.Command("G90"),
+        ]
+        self.single_compare(
+            path,
+            """G90
+G21
+G0 X1.000 Y2.000
+G0 Z8.000
+G91
+G99
+G82 X1.000 Y2.000 Z0.000 F7380.000 R5.000 P1.23456
+G80
+G90
+""",
+            "--no-comments --no-translate_drill",
+        )
+        self.single_compare(
+            path,
+            """G90
+G21
+G0 X1.000 Y2.000
+G0 Z8.000
+G91
+G90
+G0 Z13.000
+G0 X2.000 Y4.000
+G1 Z8.000 F7380.000
+G4 P1.23456
+G0 Z13.000
+G91
+G90
+""",
+            "--translate_drill",
+        )
+        self.single_compare(
+            path,
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+G0 X1.000 Y2.000
+G0 Z8.000
+G91
+( G99 )
+( G82 X1.000 Y2.000 Z0.000 F7380.000 R5.000 P1.23456 )
+G90
+G0 Z13.000
+G0 X2.000 Y4.000
+G1 Z8.000 F7380.000
+G4 P1.23456
+G0 Z13.000
+G91
+( G80 )
+G90
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--comments --translate_drill",
+        )
+
+<<<<<<< HEAD
+        expected = """G90
+G20
+G64 Q0.1798 P0.1361
 """
-        args = ""
+        args = "--inches"
         gcode = postprocessor.export(postables, "gcode.tmp", args)
         # print("--------\n" + gcode + "--------\n")
         self.assertEqual(gcode, expected)
-        #
-        c = Path.Command("G64 P3.456789")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
+>>>>>>> 327e6ccf29 (Path:  Added more tests and fixed some parameter handling.)
+=======
+    def test01830(self):
+        """Test G83 command Generation."""
+        path = [
+            Path.Command("G0 X1 Y2"),
+            Path.Command("G0 Z8"),
+            Path.Command("G90"),
+            Path.Command("G99"),
+            Path.Command("G83 X1 Y2 Z0 F123 Q1.5 R5"),
+            Path.Command("G80"),
+            Path.Command("G90"),
+        ]
+        self.single_compare(
+            path,
+            """G90
 G21
-G64 P3.457
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
-        #
-        c = Path.Command("G64 P3.456789 Q4.567891")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
+G0 X1.000 Y2.000
+G0 Z8.000
+G90
+G99
+G83 X1.000 Y2.000 Z0.000 F7380.000 Q1.500 R5.000
+G80
+G90
+""",
+            "",
+        )
+        self.single_compare(
+            path,
+            """G90
 G21
-G64 Q4.568 P3.457
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+G0 X1.000 Y2.000
+G0 Z8.000
+G90
+G0 X1.000 Y2.000
+G1 Z5.000 F7380.000
+G1 Z3.500 F7380.000
+G0 Z5.000
+G0 Z3.575
+G1 Z2.000 F7380.000
+G0 Z5.000
+G0 Z2.075
+G1 Z0.500 F7380.000
+G0 Z5.000
+G0 Z0.575
+G1 Z0.000 F7380.000
+G0 Z5.000
+G90
+""",
+            "--translate_drill",
+        )
+        self.single_compare(
+            path,
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+G0 X1.000 Y2.000
+G0 Z8.000
+G90
+( G99 )
+( G83 X1.000 Y2.000 Z0.000 F7380.000 Q1.500 R5.000 )
+G0 X1.000 Y2.000
+G1 Z5.000 F7380.000
+G1 Z3.500 F7380.000
+G0 Z5.000
+G0 Z3.575
+G1 Z2.000 F7380.000
+G0 Z5.000
+G0 Z2.075
+G1 Z0.500 F7380.000
+G0 Z5.000
+G0 Z0.575
+G1 Z0.000 F7380.000
+G0 Z5.000
+( G80 )
+G90
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--comments --translate_drill",
+        )
+        #
+        # Re-initialize all of the values before doing more tests.
+        #
+        postprocessor.init_values(postprocessor.values)
         #
         c = Path.Command("G64 P3.456789 Q4.567891")
 

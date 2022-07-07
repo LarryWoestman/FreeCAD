@@ -299,6 +299,15 @@ def init_shared_values(values):
     #
     values["CHIPBREAKING_AMOUNT"] = Units.Quantity(0.25, Units.Length)
     #
+    # How far to move up (in millimeters) in the Z axis when chipbreaking with a G73 command.
+    #
+<<<<<<< HEAD
+    values["CHIPBREAKING_AMOUNT"] = Units.Quantity(0.25, FreeCAD.Units.Length)
+
+=======
+    values["CHIPBREAKING_AMOUNT"] = 0.5
+>>>>>>> a5c1888c74 (Path:  Refactored to reduce copyitis, added G73 support (but not test))
+    #
     # If this is set to "", all spaces are removed from between commands and parameters.
     #
     values["COMMAND_SPACE"] = " "
