@@ -21,20 +21,30 @@
 # *                                                                         *
 # ***************************************************************************
 
+import os
+from typing import Any, Dict, List
+
 import FreeCAD
 
 import Path
-import PathTests.PathTestUtils as PathTestUtils
-from Path.Post.scripts import refactored_test_post as postprocessor
 
+from PathScripts import PathLog
+from PathScripts import PathToolBit
+from PathScripts import PathToolController
+from PathScripts.post import refactored_test_post as postprocessor
+from PathTests import PathTestUtils
+
+from PySide.QtCore import QT_TRANSLATE_NOOP  # type: ignore
 
 Path.Log.setLevel(Path.Log.Level.DEBUG, Path.Log.thisModule())
 Path.Log.trackModule(Path.Log.thisModule())
 
 
 class TestRefactoredTestPost(PathTestUtils.PathTestBase):
+    """Test the refactored_test_post.py postprocessor."""
+
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         """setUpClass()...
 
         This method is called upon instantiation of this test class.  Add code
@@ -48,7 +58,7 @@ class TestRefactoredTestPost(PathTestUtils.PathTestBase):
         FreeCAD.newDocument("Unnamed")
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         """tearDownClass()...
 
         This method is called prior to destruction of this test class.  Add
@@ -62,7 +72,7 @@ class TestRefactoredTestPost(PathTestUtils.PathTestBase):
 
     # Setup and tear down methods called before and after each unit test
 
-    def setUp(self):
+    def setUp(self) -> None:
         """setUp()...
 
         This method is called prior to each `test()` method.  Add code and
@@ -72,13 +82,11 @@ class TestRefactoredTestPost(PathTestUtils.PathTestBase):
         self.doc = FreeCAD.ActiveDocument
         self.con = FreeCAD.Console
         self.docobj = FreeCAD.ActiveDocument.addObject("Path::Feature", "testpath")
-        #
         # Re-initialize all of the values before doing a test.
-        #
         postprocessor.UNITS = "G21"
-        postprocessor.init_values(postprocessor.values)
+        postprocessor.init_values(postprocessor.global_values)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         """tearDown()...
 
         This method is called after each test() method. Add cleanup instructions here.
@@ -86,61 +94,45 @@ class TestRefactoredTestPost(PathTestUtils.PathTestBase):
         """
         FreeCAD.ActiveDocument.removeObject("testpath")
 
-<<<<<<< HEAD
-    def single_compare(self, path, expected, args, debug=False):
+    def single_compare(
+        self, path: List[Path.Command], expected: str, args: str, debug: bool = False
+    ) -> None:
         """Perform a test with a single comparison."""
-        nl = "\n"
+        nl: str = "\n"
+
         self.docobj.Path = Path.Path(path)
         postables = [self.docobj]
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        gcode: str = postprocessor.export(postables, "gcode.tmp", args)
         if debug:
             print(f"--------{nl}{gcode}--------{nl}")
         self.assertEqual(gcode, expected)
 
-    def compare_third_line(self, path_string, expected, args, debug=False):
+    def compare_third_line(
+        self, path_string: str, expected: str, args: str, debug: bool = False
+    ) -> None:
         """Perform a test with a single comparison to the third line of the output."""
-        nl = "\n"
+        nl: str = "\n"
+
         if path_string:
             self.docobj.Path = Path.Path([Path.Command(path_string)])
         else:
             self.docobj.Path = Path.Path([])
         postables = [self.docobj]
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        gcode: str = postprocessor.export(postables, "gcode.tmp", args)
         if debug:
             print(f"--------{nl}{gcode}--------{nl}")
         self.assertEqual(gcode.splitlines()[2], expected)
 
-=======
->>>>>>> 327e6ccf29 (Path:  Added more tests and fixed some parameter handling.)
-    def single_compare(self, path, expected, args, debug=False):
-        """Perform a test with a single comparison."""
-        self.docobj.Path = Path.Path(path)
-        postables = [self.docobj]
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        if debug:
-            print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
-
-    def compare_third_line(self, path_string, expected, args, debug=False):
-        """Perform a test with a single comparison only to the third line of the output."""
-        if path_string:
-            self.docobj.Path = Path.Path([Path.Command(path_string)])
-        else:
-            self.docobj.Path = Path.Path([])
-        postables = [self.docobj]
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        if debug:
-            print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode.splitlines()[2], expected)
-
+    #############################################################################
     #
     # The tests are organized into groups:
     #
     #   00000 - 00099  tests that don't fit any other category
-    #   00100 - 00999  tests for all of the various arguments/options
-    #   01000 - 01999  tests for the various G codes at 1000 + 10 * g_code_value
-    #   02000 - 02999  tests for the various M codes at 2000 + 10 * m_code_value
+    #   00100 - 09999  tests for all of the various arguments/options
+    #   10000 - 19999  tests for the various G codes at 10000 + 10 * g_code_value
+    #   20000 - 29999  tests for the various M codes at 20000 + 10 * m_code_value
     #
+    #############################################################################
 
     def test00000(self):
         """Test Output Generation.
@@ -323,6 +315,9 @@ G21
 
         Suppress the axis coordinate if the same as previous
         """
+        args: str
+        gcode: str
+
         c = Path.Command("G0 X10 Y20 Z30")
         c1 = Path.Command("G0 X10 Y30 Z30")
 
@@ -339,7 +334,9 @@ G21
         # print("--------\n" + gcode + "--------\n")
         self.assertEqual(gcode.splitlines()[3], "G0 X10.000 Y30.000 Z30.000")
 
-    def test00120(self):
+    #############################################################################
+
+    def test00110(self) -> None:
         """Test axis-precision."""
         self.compare_third_line(
             "G0 X10 Y20 Z30", "G0 X10.00 Y20.00 Z30.00", "--axis-precision=2"
@@ -394,14 +391,10 @@ G21
         gcode = postprocessor.export(postables, "gcode.tmp", args)
         # print("--------\n" + gcode + "--------\n")
         self.assertEqual(gcode.splitlines()[1], "G20")
-<<<<<<< HEAD
         self.assertEqual(
             gcode.splitlines()[2],
             "G0 X0.3937 Y0.7874 Z1.1811 A0.3937 B0.7874 C1.1811 U0.3937 V0.7874 W1.1811",
         )
-=======
-        self.assertEqual(gcode.splitlines()[2], "G0 X0.3937 Y0.7874 Z1.1811 A0.3937 B0.7874 C1.1811 U0.3937 V0.7874 W1.1811")
->>>>>>> 327e6ccf29 (Path:  Added more tests and fixed some parameter handling.)
 
     def test00170(self):
         """Test modal.
@@ -863,41 +856,10 @@ G40
         self.compare_third_line("G41 D0", "G41 D0", "")
         self.compare_third_line("G41 D1.23456", "G41 D1", "--inches")
 
-        c = Path.Command("G41 D1.23456")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G20
-G41 D1
-"""
-        args = "--inches"
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
-
     def test01411(self):
         """Test G41.1 command Generation."""
-<<<<<<< HEAD
         self.compare_third_line("G41.1 D1.23456 L3", "G41.1 D1.235 L3", "")
         self.compare_third_line("G41.1 D1.23456 L3", "G41.1 D0.0486 L3", "--inches")
-=======
-        #
-        c = Path.Command("G41.1 D1.23456 L3")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G41.1 L3 D1.235
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
->>>>>>> 327e6ccf29 (Path:  Added more tests and fixed some parameter handling.)
 
         c = Path.Command("G41.1 D1.23456 L3")
 
@@ -969,161 +931,32 @@ G42 D1
     def test01520(self):
         """Test G52 command Generation."""
         self.single_compare(
-            [
-                Path.Command(
-                    "G52 X1.234567 Y2.345678 Z3.456789 A4.567891 B5.678912 C6.789123 U7.891234 V8.912345 W9.123456"
-                ),
-                Path.Command(
-                    "G52 X0 Y0.0 Z0.00 A0.000 B0.0000 C0.00000 U0.000000 V0 W0"
-                ),
-            ],
-            """G90
+            [],
+            """(Begin preamble)
+G90
 G21
-<<<<<<< HEAD
-G52 X1.235 Y2.346 Z3.457 A4.568 B5.679 C6.789 U7.891 V8.912 W9.123
-G52 X0.000 Y0.000 Z0.000 A0.000 B0.000 C0.000 U0.000 V0.000 W0.000
+(Begin operation)
+(Finish operation: testpath)
+(Begin postamble)
 """,
-            "",
+            "--comments",
         )
+
+        # test outputting the machine name
         self.single_compare(
-            [
-                Path.Command(
-                    "G52 X1.234567 Y2.345678 Z3.456789 A4.567891 B5.678912 C6.789123 U7.891234 V8.912345 W9.123456"
-                ),
-                Path.Command(
-                    "G52 X0 Y0.0 Z0.00 A0.000 B0.0000 C0.00000 U0.000000 V0 W0"
-                ),
-            ],
-            """G90
-G20
-G52 X0.0486 Y0.0923 Z0.1361 A0.1798 B0.2236 C0.2673 U0.3107 V0.3509 W0.3592
-G52 X0.0000 Y0.0000 Z0.0000 A0.0000 B0.0000 C0.0000 U0.0000 V0.0000 W0.0000
-""",
-            "--inches",
-        )
-
-    #     def test01530(self):
-    #         """Test G53 command Generation."""
-    #         #
-    #         # G53 is handled differently in different gcode interpreters.
-    #         # It always means "absolute machine coordinates", but it is
-    #         # used like G0 in Centroid and Mach4, and used in front of
-    #         # G0 or G1 on the same line in Fanuc, Grbl, LinuxCNC, and Tormach.
-    #         # It is not modal in any gcode interpreter I currently know about.
-    #         # The current FreeCAD code treats G53 as modal (like G54-G59.9).
-    #         # The current refactored postprocessor code does not
-    #         # handle having two G-commands on the same line.
-    #         #
-    #         c = Path.Command("G53 G0 X10 Y20 Z30 A40 B50 C60 U70 V80 W90")
-
-    #         self.docobj.Path = Path.Path([c])
-    #         postables = [self.docobj]
-
-    #         expected = """G90
-    # G21
-    # G53 G0 X10.000 Y20.000 Z30.000 A40.000 B50.000 C60.000 U70.000 V80.000 W90.000
-    # """
-    #         args = ""
-    #         gcode = postprocessor.export(postables, "gcode.tmp", args)
-    #         print("--------\n" + gcode + "--------\n")
-    #         self.assertEqual(gcode, expected)
-
-    def test01540(self):
-        """Test G54 command Generation."""
-        self.compare_third_line("G54", "G54", "")
-=======
-G42.1 L3 D1.235
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
-
-        c = Path.Command("G42.1 D1.23456 L3")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G20
-G42.1 L3 D0.0486
-"""
-        args = "--inches"
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
-
-    def test01430(self):
-        """Test G43 command Generation."""
-        self.compare_third_line("G43 H1.23456", "G43 H1", "")
-        self.compare_third_line("G43 H0", "G43 H0", "")
-        self.compare_third_line("G43 H1.23456", "G43 H1", "--inches")
-
-    def test01431(self):
-        """Test G43.1 command Generation."""
-        self.compare_third_line(
-            "G43.1 X1.234567 Y2.345678 Z3.456789 A4.567891 B5.678912 C6.789123 U7.891234 V8.912345 W9.123456",
-            "G43.1 X1.235 Y2.346 Z3.457 A4.568 B5.679 C6.789 U7.891 V8.912 W9.123",
-            "",
-        )
-        self.compare_third_line(
-            "G43.1 X1.234567 Y2.345678 Z3.456789 A4.567891 B5.678912 C6.789123 U7.891234 V8.912345 W9.123456",
-            "G43.1 X0.0486 Y0.0923 Z0.1361 A0.1798 B0.2236 C0.2673 U0.3107 V0.3509 W0.3592",
-            "--inches",
-        )
-
-    def test01432(self):
-        """Test G43.2 command Generation."""
-        self.compare_third_line("G43.2 H1.23456", "G43.2 H1", "")
-
-    def test01490(self):
-        """Test G49 command Generation."""
-        self.compare_third_line("G49", "G49", "")
-
-    def test01520(self):
-        """Test G52 command Generation."""
-        self.single_compare(
-            [
-                Path.Command(
-                    "G52 X1.234567 Y2.345678 Z3.456789 A4.567891 B5.678912 C6.789123 U7.891234 V8.912345 W9.123456"
-                ),
-                Path.Command("G52 X0 Y0.0 Z0.00 A0.000 B0.0000 C0.00000 U0.000000 V0 W0"),
-            ],
-            """G90
+            [],
+            """(Begin preamble)
+G90
 G21
-G52 X1.235 Y2.346 Z3.457 A4.568 B5.679 C6.789 U7.891 V8.912 W9.123
-G52 X0.000 Y0.000 Z0.000 A0.000 B0.000 C0.000 U0.000 V0.000 W0.000
+(Begin operation)
+(Machine: test, mm/min)
+(Finish operation: testpath)
+(Begin postamble)
 """,
-            "",
-        )
-        self.single_compare(
-            [
-                Path.Command(
-                    "G52 X1.234567 Y2.345678 Z3.456789 A4.567891 B5.678912 C6.789123 U7.891234 V8.912345 W9.123456"
-                ),
-                Path.Command("G52 X0 Y0.0 Z0.00 A0.000 B0.0000 C0.00000 U0.000000 V0 W0"),
-            ],
-            """G90
-G20
-G52 X0.0486 Y0.0923 Z0.1361 A0.1798 B0.2236 C0.2673 U0.3107 V0.3509 W0.3592
-G52 X0.0000 Y0.0000 Z0.0000 A0.0000 B0.0000 C0.0000 U0.0000 V0.0000 W0.0000
-""",
-            "--inches",
+            "--output_machine_name --comments",
         )
 
-    #     def test01530(self):
-    #         """Test G53 command Generation."""
-    #         #
-    #         # G53 is handled differently in different gcode interpreters.
-    #         # It always means "absolute machine coordinates", but it is
-    #         # used like G0 in Centroid and Mach4, and used in front of
-    #         # G0 or G1 on the same line in Fanuc, Grbl, LinuxCNC, and Tormach.
-    #         # It is not modal in any gcode interpreter I currently know about.
-    #         # The current FreeCAD code treats G53 as modal (like G54-G59.9).
-    #         # The current refactored postprocessor code does not
-    #         # handle having two G-commands on the same line.
-    #         #
-    #         c = Path.Command("G53 G0 X10 Y20 Z30 A40 B50 C60 U70 V80 W90")
+    #############################################################################
 
     #         self.docobj.Path = Path.Path([c])
     #         postables = [self.docobj]
@@ -1158,7 +991,6 @@ G54
     def test01541(self):
         """Test G54.1 command Generation."""
         #
-<<<<<<< HEAD
         # Some gcode interpreters use G54.1 P- to select additional
         # work coordinate systems.
         #
@@ -1183,52 +1015,11 @@ G54
     def test01590(self):
         """Test G59 command Generation."""
         self.compare_third_line("G59", "G59", "")
-=======
-        # Some gcode interpreters us G54.1 P- to select additional
-        # work coordinate systems.
-        #
-        self.compare_third_line("G54.1 P2.34567", "G54.1 P2", "")
-
-    def test01550(self):
-        """Test G55 command Generation."""
-        self.compare_third_line("G55", "G55", "")
-
-    def test01560(self):
-        """Test G56 command Generation."""
-        self.compare_third_line("G56", "G56", "")
-
-    def test01570(self):
-        """Test G57 command Generation."""
-        self.compare_third_line("G57", "G57", "")
-
-    def test01580(self):
-        """Test G58 command Generation."""
-        self.compare_third_line("G58", "G58", "")
-
-    def test01590(self):
-        """Test G59 command Generation."""
-        #
-        c = Path.Command("G59")
-
-        self.docobj.Path = Path.Path([c])
-        postables = [self.docobj]
-
-        expected = """G90
-G21
-G59
-"""
-        args = ""
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
-
->>>>>>> 327e6ccf29 (Path:  Added more tests and fixed some parameter handling.)
         #
         # Some gcode interpreters use G59 P- to select additional
         # work coordinate systems.  This is considered somewhat
-        # obsolete and is being replaced by G54.1 P- instead.
+        # obsolete and is being replaces by G54.1 P- instead.
         #
-<<<<<<< HEAD
         self.compare_third_line("G59 P2.34567", "G59 P2", "")
 
     def test01591(self):
@@ -1295,20 +1086,7 @@ G59
             Path.Command("G80"),
             Path.Command("G90"),
         ]
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-G99
-G73 X1.000 Y2.000 Z0.000 R5.000 Q1.500 F7380.000
-G80
-G90
-""",
-            "",
-        )
+        # check the default chipbreaking amount
         self.single_compare(
             path,
             """G90
@@ -1333,421 +1111,7 @@ G90
 """,
             "--translate_drill",
         )
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-( G99 )
-( G73 X1.000 Y2.000 Z0.000 R5.000 Q1.500 F7380.000 )
-G0 X1.000 Y2.000
-G1 Z5.000 F7380.000
-G1 Z3.500 F7380.000
-G0 Z3.750
-G0 Z3.575
-G1 Z2.000 F7380.000
-G0 Z2.250
-G0 Z2.075
-G1 Z0.500 F7380.000
-G0 Z0.750
-G0 Z0.575
-G1 Z0.000 F7380.000
-G0 Z5.000
-( G80 )
-G90
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments --translate_drill",
-        )
-        #
-        # Re-initialize all of the values before doing more tests.
-        #
-        postprocessor.init_values(postprocessor.values)
-        #
-        # Test translate_drill with G83 and G91.
-        path = [
-            Path.Command("G0 X1 Y2"),
-            Path.Command("G0 Z8"),
-            Path.Command("G91"),
-            Path.Command("G99"),
-            Path.Command("G73 X1 Y2 Z0 F123 Q1.5 R5"),
-            Path.Command("G80"),
-            Path.Command("G90"),
-        ]
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-G99
-G73 X1.000 Y2.000 Z0.000 R5.000 Q1.500 F7380.000
-G80
-G90
-""",
-            "--no-comments --no-translate_drill",
-        )
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-G90
-G0 Z13.000
-G0 X2.000 Y4.000
-G1 Z11.500 F7380.000
-G0 Z11.750
-G0 Z11.575
-G1 Z10.000 F7380.000
-G0 Z10.250
-G0 Z10.075
-G1 Z8.500 F7380.000
-G0 Z8.750
-G0 Z8.575
-G1 Z8.000 F7380.000
-G0 Z13.000
-G91
-G90
-""",
-            "--translate_drill",
-        )
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-( G99 )
-( G73 X1.000 Y2.000 Z0.000 R5.000 Q1.500 F7380.000 )
-G90
-G0 Z13.000
-G0 X2.000 Y4.000
-G1 Z11.500 F7380.000
-G0 Z11.750
-G0 Z11.575
-G1 Z10.000 F7380.000
-G0 Z10.250
-G0 Z10.075
-G1 Z8.500 F7380.000
-G0 Z8.750
-G0 Z8.575
-G1 Z8.000 F7380.000
-G0 Z13.000
-G91
-( G80 )
-G90
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments --translate_drill",
-        )
-
-    def test01810(self):
-        """Test G81 command Generation."""
-        path = [
-            Path.Command("G0 X1 Y2"),
-            Path.Command("G0 Z8"),
-            Path.Command("G90"),
-            Path.Command("G99"),
-            Path.Command("G81 X1 Y2 Z0 F123 R5"),
-            Path.Command("G80"),
-            Path.Command("G90"),
-        ]
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-G99
-G81 X1.000 Y2.000 Z0.000 R5.000 F7380.000
-G80
-G90
-""",
-            "",
-        )
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-G0 X1.000 Y2.000
-G1 Z5.000 F7380.000
-G1 Z0.000 F7380.000
-G0 Z5.000
-G90
-""",
-            "--translate_drill",
-        )
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-( G99 )
-( G81 X1.000 Y2.000 Z0.000 R5.000 F7380.000 )
-G0 X1.000 Y2.000
-G1 Z5.000 F7380.000
-G1 Z0.000 F7380.000
-G0 Z5.000
-( G80 )
-G90
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments --translate_drill",
-        )
-        #
-        # Re-initialize all of the values before doing more tests.
-        #
-        postprocessor.init_values(postprocessor.values)
-        #
-        # Test translate_drill with G81 and G91.
-        path = [
-            Path.Command("G0 X1 Y2"),
-            Path.Command("G0 Z8"),
-            Path.Command("G91"),
-            Path.Command("G99"),
-            Path.Command("G81 X1 Y2 Z0 F123 R5"),
-            Path.Command("G80"),
-            Path.Command("G90"),
-        ]
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-G99
-G81 X1.000 Y2.000 Z0.000 R5.000 F7380.000
-G80
-G90
-""",
-            "--no-comments --no-translate_drill",
-        )
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-G90
-G0 Z13.000
-G0 X2.000 Y4.000
-G1 Z8.000 F7380.000
-G0 Z13.000
-G91
-G90
-""",
-            "--translate_drill",
-        )
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-( G99 )
-( G81 X1.000 Y2.000 Z0.000 R5.000 F7380.000 )
-G90
-G0 Z13.000
-G0 X2.000 Y4.000
-G1 Z8.000 F7380.000
-G0 Z13.000
-G91
-( G80 )
-G90
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments --translate_drill",
-        )
-
-    def test01820(self):
-        """Test G82 command Generation."""
-        path = [
-            Path.Command("G0 X1 Y2"),
-            Path.Command("G0 Z8"),
-            Path.Command("G90"),
-            Path.Command("G99"),
-            Path.Command("G82 X1 Y2 Z0 F123 R5 P1.23456"),
-            Path.Command("G80"),
-            Path.Command("G90"),
-        ]
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-G99
-G82 X1.000 Y2.000 Z0.000 R5.000 P1.23456 F7380.000
-G80
-G90
-""",
-            "",
-        )
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-G0 X1.000 Y2.000
-G1 Z5.000 F7380.000
-G1 Z0.000 F7380.000
-G4 P1.23456
-G0 Z5.000
-G90
-""",
-            "--translate_drill",
-        )
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-( G99 )
-( G82 X1.000 Y2.000 Z0.000 R5.000 P1.23456 F7380.000 )
-G0 X1.000 Y2.000
-G1 Z5.000 F7380.000
-G1 Z0.000 F7380.000
-G4 P1.23456
-G0 Z5.000
-( G80 )
-G90
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments --translate_drill",
-        )
-        #
-        # Re-initialize all of the values before doing more tests.
-        #
-        postprocessor.init_values(postprocessor.values)
-        #
-        # Test translate_drill with G82 and G91.
-        path = [
-            Path.Command("G0 X1 Y2"),
-            Path.Command("G0 Z8"),
-            Path.Command("G91"),
-            Path.Command("G99"),
-            Path.Command("G82 X1 Y2 Z0 F123 R5 P1.23456"),
-            Path.Command("G80"),
-            Path.Command("G90"),
-        ]
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-G99
-G82 X1.000 Y2.000 Z0.000 R5.000 P1.23456 F7380.000
-G80
-G90
-""",
-            "--no-comments --no-translate_drill",
-        )
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-G90
-G0 Z13.000
-G0 X2.000 Y4.000
-G1 Z8.000 F7380.000
-G4 P1.23456
-G0 Z13.000
-G91
-G90
-""",
-            "--translate_drill",
-        )
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-( G99 )
-( G82 X1.000 Y2.000 Z0.000 R5.000 P1.23456 F7380.000 )
-G90
-G0 Z13.000
-G0 X2.000 Y4.000
-G1 Z8.000 F7380.000
-G4 P1.23456
-G0 Z13.000
-G91
-( G80 )
-G90
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments --translate_drill",
-        )
-
-    def test01830(self):
-        """Test G83 command Generation."""
-        path = [
-            Path.Command("G0 X1 Y2"),
-            Path.Command("G0 Z8"),
-            Path.Command("G90"),
-            Path.Command("G99"),
-            Path.Command("G83 X1 Y2 Z0 F123 Q1.5 R5"),
-            Path.Command("G80"),
-            Path.Command("G90"),
-        ]
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-G99
-G83 X1.000 Y2.000 Z0.000 R5.000 Q1.500 F7380.000
-G80
-G90
-""",
-            "",
-        )
+        # check for a metric chipbreaking amount
         self.single_compare(
             path,
             """G90
@@ -1758,704 +1122,1120 @@ G90
 G0 X1.000 Y2.000
 G1 Z5.000 F7380.000
 G1 Z3.500 F7380.000
-G0 Z5.000
+G0 Z4.735
 G0 Z3.575
 G1 Z2.000 F7380.000
-G0 Z5.000
+G0 Z3.235
 G0 Z2.075
 G1 Z0.500 F7380.000
-G0 Z5.000
+G0 Z1.735
 G0 Z0.575
 G1 Z0.000 F7380.000
 G0 Z5.000
 G90
 """,
-            "--translate_drill",
+            "--translate_drill --chipbreaking_amount='1.23456 mm'",
         )
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-( G99 )
-( G83 X1.000 Y2.000 Z0.000 R5.000 Q1.500 F7380.000 )
-G0 X1.000 Y2.000
-G1 Z5.000 F7380.000
-G1 Z3.500 F7380.000
-G0 Z5.000
-G0 Z3.575
-G1 Z2.000 F7380.000
-G0 Z5.000
-G0 Z2.075
-G1 Z0.500 F7380.000
-G0 Z5.000
-G0 Z0.575
-G1 Z0.000 F7380.000
-G0 Z5.000
-( G80 )
-G90
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments --translate_drill",
-        )
-        #
-        # Re-initialize all of the values before doing more tests.
-        #
-        postprocessor.init_values(postprocessor.values)
-        #
-        # Test translate_drill with G83 and G91.
+        # check for an inch/imperial chipbreaking amount
         path = [
-            Path.Command("G0 X1 Y2"),
-            Path.Command("G0 Z8"),
-            Path.Command("G91"),
+            Path.Command("G0 X25.4 Y50.8"),
+            Path.Command("G0 Z203.2"),
+            Path.Command("G90"),
             Path.Command("G99"),
-            Path.Command("G83 X1 Y2 Z0 F123 Q1.5 R5"),
+            Path.Command("G73 X25.4 Y50.8 Z0 F123 Q38.1 R127"),
             Path.Command("G80"),
             Path.Command("G90"),
         ]
         self.single_compare(
             path,
             """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-G99
-G83 X1.000 Y2.000 Z0.000 R5.000 Q1.500 F7380.000
-G80
+G20
+G0 X1.0000 Y2.0000
+G0 Z8.0000
+G90
+G0 X1.0000 Y2.0000
+G1 Z5.0000 F290.5512
+G1 Z3.5000 F290.5512
+G0 Z3.7500
+G0 Z3.5750
+G1 Z2.0000 F290.5512
+G0 Z2.2500
+G0 Z2.0750
+G1 Z0.5000 F290.5512
+G0 Z0.7500
+G0 Z0.5750
+G1 Z0.0000 F290.5512
+G0 Z5.0000
 G90
 """,
-            "--no-comments --no-translate_drill",
-        )
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-G90
-G0 Z13.000
-G0 X2.000 Y4.000
-G1 Z11.500 F7380.000
-G0 Z13.000
-G0 Z11.575
-G1 Z10.000 F7380.000
-G0 Z13.000
-G0 Z10.075
-G1 Z8.500 F7380.000
-G0 Z13.000
-G0 Z8.575
-G1 Z8.000 F7380.000
-G0 Z13.000
-G91
-G90
-""",
-            "--translate_drill",
-        )
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-( G99 )
-( G83 X1.000 Y2.000 Z0.000 R5.000 Q1.500 F7380.000 )
-G90
-G0 Z13.000
-G0 X2.000 Y4.000
-G1 Z11.500 F7380.000
-G0 Z13.000
-G0 Z11.575
-G1 Z10.000 F7380.000
-G0 Z13.000
-G0 Z10.075
-G1 Z8.500 F7380.000
-G0 Z13.000
-G0 Z8.575
-G1 Z8.000 F7380.000
-G0 Z13.000
-G91
-( G80 )
-G90
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments --translate_drill",
+            "--translate_drill --chipbreaking_amount='0.25 in' --inches",
         )
 
-    def test01900(self):
-        """Test G90 command Generation."""
-        self.compare_third_line("G90", "G90", "")
+    #############################################################################
 
-    def test01901(self):
-        """Test G90.1 command Generation."""
-        self.compare_third_line("G90.1", "G90.1", "")
-
-    def test01910(self):
-        """Test G91 command Generation."""
-        self.compare_third_line("G91", "G91", "")
-
-    def test01911(self):
-        """Test G91.1 command Generation."""
-        self.compare_third_line("G91.1", "G91.1", "")
-
-    def test01920(self):
-        """Test G92 command Generation."""
+    def test00126(self) -> None:
+        """Test command space."""
+        self.compare_third_line("G0 X10 Y20 Z30", "G0 X10.000 Y20.000 Z30.000", "")
         self.compare_third_line(
-            "G92 X10 Y20 Z30 A40 B50 C60 U70 V80 W90",
-            "G92 X10.000 Y20.000 Z30.000 A40.000 B50.000 C60.000 U70.000 V80.000 W90.000",
-            "",
+            "G0 X10 Y20 Z30", "G0X10.000Y20.000Z30.000", "--command_space=''"
+        )
+        self.compare_third_line(
+            "G0 X10 Y20 Z30", "G0_X10.000_Y20.000_Z30.000", "--command_space='_'"
+        )
+        path = [Path.Command("(comment with spaces)")]
+        self.single_compare(
+            path,
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(comment with spaces)
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--command_space=' ' --comments",
+        )
+        self.single_compare(
+            path,
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(comment with spaces)
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--command_space='' --comments",
         )
 
-    def test01921(self):
-        """Test G92.1 command Generation."""
-        self.compare_third_line("G92.1", "G92.1", "")
+    #############################################################################
 
-    def test01922(self):
-        """Test G92.2 command Generation."""
-        self.compare_third_line("G92.2", "G92.2", "")
+    def test00127(self) -> None:
+        """Test comment symbol."""
+        path = [Path.Command("(comment with spaces)")]
+        self.single_compare(
+            path,
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(comment with spaces)
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--comments",
+        )
+        self.single_compare(
+            path,
+            """;Begin preamble
+G90
+G21
+;Begin operation
+;comment with spaces
+;Finish operation: testpath
+;Begin postamble
+""",
+            "--comment_symbol=';' --comments",
+        )
+        self.single_compare(
+            path,
+            """!Begin preamble
+G90
+G21
+!Begin operation
+!comment with spaces
+!Finish operation: testpath
+!Begin postamble
+""",
+            "--comment_symbol='!' --comments",
+        )
 
-    def test01923(self):
-        """Test G92.3 command Generation."""
-        self.compare_third_line("G92.3", "G92.3", "")
+    #############################################################################
 
-    def test01930(self):
-        """Test G93 command Generation."""
-        self.compare_third_line("G93", "G93", "")
+    def test00130(self) -> None:
+        """Test comments."""
+        args: str
+        expected: str
+        gcode: str
 
-    def test01940(self):
-        """Test G94 command Generation."""
-        self.compare_third_line("G94", "G94", "")
+        c = Path.Command("(comment)")
+        self.docobj.Path = Path.Path([c])
+        postables = [self.docobj]
+        args = "--comments"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[4], "(comment)")
+        expected = """G90
+G21
+"""
+        args = "--no-comments"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode, expected)
 
-    def test01950(self):
-        """Test G95 command Generation."""
-        self.compare_third_line("G95", "G95", "")
+    #############################################################################
 
-    def test01980(self):
-        """Test G98 command Generation."""
-        self.compare_third_line("G98", "G98", "")
+    def test00135(self) -> None:
+        """Test enabling and disabling coolant."""
+        args: str
+        expected: str
+        gcode: str
 
-    def test01990(self):
-        """Test G99 command Generation."""
-        self.compare_third_line("G99", "G99", "")
+        c = Path.Command("G0 X10 Y20 Z30")
+        self.docobj.Path = Path.Path([c])
 
-    def test02000(self):
-        """Test M0 command Generation."""
-        self.compare_third_line("M0", "M0", "")
-        self.compare_third_line("M00", "M00", "")
+        # Test Flood coolant enabled
+        self.docobj.addProperty(
+            "App::PropertyEnumeration",
+            "CoolantMode",
+            "Path",
+            QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
+        )
+        self.docobj.CoolantMode = ["None", "Flood", "Mist"]
+        self.docobj.CoolantMode = "Flood"
+        postables = [self.docobj]
+        expected = """(Begin preamble)
+G90
+G21
+(Begin operation)
+(Coolant On: Flood)
+M8
+G0 X10.000 Y20.000 Z30.000
+(Finish operation: testpath)
+(Coolant Off: Flood)
+M9
+(Begin postamble)
+"""
+        args = "--enable_coolant --comments"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.docobj.removeProperty("CoolantMode")
+        self.assertEqual(gcode, expected)
 
-    def test02010(self):
-        """Test M1 command Generation."""
-        self.compare_third_line("M1", "M1", "")
-        self.compare_third_line("M01", "M01", "")
+        # Test Mist coolant enabled
+        self.docobj.addProperty(
+            "App::PropertyEnumeration",
+            "CoolantMode",
+            "Path",
+            QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
+        )
+        self.docobj.CoolantMode = ["None", "Flood", "Mist"]
+        self.docobj.CoolantMode = "Mist"
+        postables = [self.docobj]
+        expected = """(Begin preamble)
+G90
+G21
+(Begin operation)
+(Coolant On: Mist)
+M7
+G0 X10.000 Y20.000 Z30.000
+(Finish operation: testpath)
+(Coolant Off: Mist)
+M9
+(Begin postamble)
+"""
+        args = "--enable_coolant --comments"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.docobj.removeProperty("CoolantMode")
+        self.assertEqual(gcode, expected)
 
-    def test02020(self):
-        """Test M2 command Generation."""
-        self.compare_third_line("M2", "M2", "")
-        self.compare_third_line("M02", "M02", "")
+        # Test None coolant enabled with CoolantMode property
+        self.docobj.addProperty(
+            "App::PropertyEnumeration",
+            "CoolantMode",
+            "Path",
+            QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
+        )
+        self.docobj.CoolantMode = ["None", "Flood", "Mist"]
+        self.docobj.CoolantMode = "None"
+        postables = [self.docobj]
+        expected = """(Begin preamble)
+G90
+G21
+(Begin operation)
+G0 X10.000 Y20.000 Z30.000
+(Finish operation: testpath)
+(Begin postamble)
+"""
+        args = "--enable_coolant --comments"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.docobj.removeProperty("CoolantMode")
+        self.assertEqual(gcode, expected)
 
-    def test02030(self):
-        """Test M3 command Generation."""
-        self.compare_third_line("M3", "M3", "")
-        self.compare_third_line("M03", "M03", "")
+        # Test coolant enabled without a CoolantMode property
+        postables = [self.docobj]
+        expected = """(Begin preamble)
+G90
+G21
+(Begin operation)
+G0 X10.000 Y20.000 Z30.000
+(Finish operation: testpath)
+(Begin postamble)
+"""
+        args = "--enable_coolant --comments"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode, expected)
 
-    def test02040(self):
-        """Test M4 command Generation."""
-        self.compare_third_line("M4", "M4", "")
-        self.compare_third_line("M04", "M04", "")
+        # Test Flood coolant disabled
+        self.docobj.addProperty(
+            "App::PropertyEnumeration",
+            "CoolantMode",
+            "Path",
+            QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
+        )
+        self.docobj.CoolantMode = ["None", "Flood", "Mist"]
+        self.docobj.CoolantMode = "Flood"
+        postables = [self.docobj]
+        expected = """(Begin preamble)
+G90
+G21
+(Begin operation)
+G0 X10.000 Y20.000 Z30.000
+(Finish operation: testpath)
+(Begin postamble)
+"""
+        args = "--disable_coolant --comments"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.docobj.removeProperty("CoolantMode")
+        self.assertEqual(gcode, expected)
 
-    def test02050(self):
-        """Test M5 command Generation."""
-        self.compare_third_line("M5", "M5", "")
-        self.compare_third_line("M05", "M05", "")
+        # Test Mist coolant disabled
+        self.docobj.addProperty(
+            "App::PropertyEnumeration",
+            "CoolantMode",
+            "Path",
+            QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
+        )
+        self.docobj.CoolantMode = ["None", "Flood", "Mist"]
+        self.docobj.CoolantMode = "Mist"
+        postables = [self.docobj]
+        expected = """(Begin preamble)
+G90
+G21
+(Begin operation)
+G0 X10.000 Y20.000 Z30.000
+(Finish operation: testpath)
+(Begin postamble)
+"""
+        args = "--disable_coolant --comments"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.docobj.removeProperty("CoolantMode")
+        self.assertEqual(gcode, expected)
 
-    def test02060(self):
-        """Test M6 command Generation."""
-        self.compare_third_line("M6", "M6", "")
-        self.compare_third_line("M06", "M06", "")
+        # Test None coolant disabled with CoolantMode property
+        self.docobj.addProperty(
+            "App::PropertyEnumeration",
+            "CoolantMode",
+            "Path",
+            QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
+        )
+        self.docobj.CoolantMode = ["None", "Flood", "Mist"]
+        self.docobj.CoolantMode = "None"
+        postables = [self.docobj]
+        expected = """(Begin preamble)
+G90
+G21
+(Begin operation)
+G0 X10.000 Y20.000 Z30.000
+(Finish operation: testpath)
+(Begin postamble)
+"""
+        args = "--disable_coolant --comments"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.docobj.removeProperty("CoolantMode")
+        self.assertEqual(gcode, expected)
 
-    def test02070(self):
-        """Test M7 command Generation."""
-        self.compare_third_line("M7", "M7", "")
-        self.compare_third_line("M07", "M07", "")
+        # Test coolant disabled without a CoolantMode property
+        postables = [self.docobj]
+        expected = """(Begin preamble)
+G90
+G21
+(Begin operation)
+G0 X10.000 Y20.000 Z30.000
+(Finish operation: testpath)
+(Begin postamble)
+"""
+        args = "--disable_coolant --comments"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode, expected)
 
-    def test02080(self):
-        """Test M8 command Generation."""
-        self.compare_third_line("M8", "M8", "")
-        self.compare_third_line("M08", "M08", "")
+        # Test Flood coolant configured but no coolant argument (default)
+        self.docobj.addProperty(
+            "App::PropertyEnumeration",
+            "CoolantMode",
+            "Path",
+            QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
+        )
+        self.docobj.CoolantMode = ["None", "Flood", "Mist"]
+        self.docobj.CoolantMode = "Flood"
+        postables = [self.docobj]
+        expected = """(Begin preamble)
+G90
+G21
+(Begin operation)
+G0 X10.000 Y20.000 Z30.000
+(Finish operation: testpath)
+(Begin postamble)
+"""
+        args = "--comments"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.docobj.removeProperty("CoolantMode")
+        self.assertEqual(gcode, expected)
 
-    def test02090(self):
-        """Test M9 command Generation."""
-        self.compare_third_line("M9", "M9", "")
-        self.compare_third_line("M09", "M09", "")
+    #############################################################################
 
-    def test02300(self):
-        """Test M30 command Generation."""
-        self.compare_third_line("M30", "M30", "")
+    def test00137(self) -> None:
+        """Test enabling/disabling machine specific commands."""
+        path = [Path.Command("(MC_RUN_COMMAND: blah)")]
+        # test with machine specific commands enabled
+        self.single_compare(
+            path,
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(MC_RUN_COMMAND: blah)
+blah
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--enable_machine_specific_commands --comments",
+        )
+        # test with machine specific commands disabled
+        self.single_compare(
+            path,
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(MC_RUN_COMMAND: blah)
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--disable_machine_specific_commands --comments",
+        )
+        # test with machine specific commands default
+        self.single_compare(
+            path,
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(MC_RUN_COMMAND: blah)
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--comments",
+        )
+        # test with odd characters and spaces in the machine specific command
+        path = [Path.Command("(MC_RUN_COMMAND: These are odd characters:!@#$%^&*?/)")]
+        self.single_compare(
+            path,
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(MC_RUN_COMMAND: These are odd characters:!@#$%^&*?/)
+These are odd characters:!@#$%^&*?/
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--enable_machine_specific_commands --comments",
+        )
 
-    def test02480(self):
-        """Test M48 command Generation."""
-        self.compare_third_line("M48", "M48", "")
+    #############################################################################
 
-    def test02490(self):
-        """Test M49 command Generation."""
-        self.compare_third_line("M49", "M49", "")
+    def test00138(self) -> None:
+        """Test end of line characters."""
+        args: str
+        expected: bytes
+        gcode_bytes: bytes
 
-    def test02600(self):
-        """Test M60 command Generation."""
-        self.compare_third_line("M60", "M60", "")
-=======
-        c = Path.Command("G59 P2.34567")
+        self.docobj.Path = Path.Path([])
+        postables = [self.docobj]
+
+        # Test with whatever the system running the test happens to use
+        expected = b"G90" + os.linesep.encode() + b"G21" + os.linesep.encode()
+        args = ""
+        _ = postprocessor.export(postables, "gcode.tmp", args)
+        with open("gcode.tmp", mode="rb") as bfile:
+            gcode_bytes = bfile.read()
+        self.assertEqual(gcode_bytes, expected)
+
+        # Test with a new line
+        expected = b"G90\nG21\n"
+        args = "--end_of_line_characters='\n'"
+        _ = postprocessor.export(postables, "gcode.tmp", args)
+        with open("gcode.tmp", mode="rb") as bfile:
+            gcode_bytes = bfile.read()
+        self.assertEqual(gcode_bytes, expected)
+
+        # Test with a carriage return followed by a new line
+        expected = b"G90\r\nG21\r\n"
+        args = "--end_of_line_characters='\r\n'"
+        _ = postprocessor.export(postables, "gcode.tmp", args)
+        with open("gcode.tmp", mode="rb") as bfile:
+            gcode_bytes = bfile.read()
+        self.assertEqual(gcode_bytes, expected)
+
+        # Test with a carriage return
+        expected = b"G90\rG21\r"
+        args = "--end_of_line_characters='\r'"
+        _ = postprocessor.export(postables, "gcode.tmp", args)
+        with open("gcode.tmp", mode="rb") as bfile:
+            gcode_bytes = bfile.read()
+        self.assertEqual(gcode_bytes, expected)
+
+    #############################################################################
+
+    def test00140(self) -> None:
+        """Test feed-precision."""
+        args: str
+        gcode: str
+
+        c = Path.Command("G1 X10 Y20 Z30 F123.123456")
 
         self.docobj.Path = Path.Path([c])
         postables = [self.docobj]
 
-        expected = """G90
-G21
-G59 P2
-"""
         args = ""
         gcode = postprocessor.export(postables, "gcode.tmp", args)
         # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+        # Note:  The "internal" F speed is in mm/s,
+        #        while the output F speed is in mm/min.
+        self.assertEqual(gcode.splitlines()[2], "G1 X10.000 Y20.000 Z30.000 F7387.407")
 
-    def test01591(self):
-        """Test G59.1 command Generation."""
-        self.compare_third_line("G59.1", "G59.1", "")
-
-    def test01592(self):
-        """Test G59.2 command Generation."""
-        self.compare_third_line("G59.2", "G59.2", "")
-
-    def test01593(self):
-        """Test G59.3 command Generation."""
-        self.compare_third_line("G59.3", "G59.3", "")
-
-    def test01594(self):
-        """Test G59.4 command Generation."""
-        self.compare_third_line("G59.4", "G59.4", "")
-
-    def test01595(self):
-        """Test G59.5 command Generation."""
-        self.compare_third_line("G59.5", "G59.5", "")
-
-    def test01596(self):
-        """Test G59.6 command Generation."""
-        self.compare_third_line("G59.6", "G59.6", "")
-
-    def test01597(self):
-        """Test G59.7 command Generation."""
-        self.compare_third_line("G59.7", "G59.7", "")
-
-    def test01598(self):
-        """Test G59.8 command Generation."""
-        self.compare_third_line("G59.8", "G59.8", "")
-
-    def test01599(self):
-        """Test G59.9 command Generation."""
-        self.compare_third_line("G59.9", "G59.9", "")
-
-    def test01610(self):
-        """Test G61 command Generation."""
-        self.compare_third_line("G61", "G61", "")
-
-    def test01611(self):
-        """Test G61.1 command Generation."""
-        self.compare_third_line("G61.1", "G61.1", "")
-
-    def test01640(self):
-        """Test G64 command Generation."""
-        self.compare_third_line("G64", "G64", "")
-        self.compare_third_line("G64 P3.456789", "G64 P3.457", "")
-        self.compare_third_line("G64 P3.456789 Q4.567891", "G64 Q4.568 P3.457", "")
-        self.compare_third_line("G64 P3.456789 Q4.567891", "G64 Q0.1798 P0.1361", "--inches")
-
-    def test01810(self):
-        """Test G81 command Generation."""
-        path = [
-            Path.Command("G0 X1 Y2"),
-            Path.Command("G0 Z8"),
-            Path.Command("G90"),
-            Path.Command("G99"),
-            Path.Command("G81 X1 Y2 Z0 F123 R5"),
-            Path.Command("G80"),
-            Path.Command("G90"),
-        ]
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-G99
-G81 X1.000 Y2.000 Z0.000 F7380.000 R5.000
-G80
-G90
-""",
-            "",
-        )
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-G0 X1.000 Y2.000
-G1 Z5.000 F7380.000
-G1 Z0.000 F7380.000
-G0 Z5.000
-G90
-""",
-            "--translate_drill",
-        )
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-( G99 )
-( G81 X1.000 Y2.000 Z0.000 F7380.000 R5.000 )
-G0 X1.000 Y2.000
-G1 Z5.000 F7380.000
-G1 Z0.000 F7380.000
-G0 Z5.000
-( G80 )
-G90
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments --translate_drill",
-        )
-        #
-        # Re-initialize all of the values before doing more tests.
-        #
-        postprocessor.init_values(postprocessor.values)
-        #
-        # Test translate_drill with G81 and G91.
-        path = [
-            Path.Command("G0 X1 Y2"),
-            Path.Command("G0 Z8"),
-            Path.Command("G91"),
-            Path.Command("G99"),
-            Path.Command("G81 X1 Y2 Z0 F123 R5"),
-            Path.Command("G80"),
-            Path.Command("G90"),
-        ]
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-G99
-G81 X1.000 Y2.000 Z0.000 F7380.000 R5.000
-G80
-G90
-""",
-            "--no-comments --no-translate_drill",
-        )
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-G90
-G0 Z13.000
-G0 X2.000 Y4.000
-G1 Z8.000 F7380.000
-G0 Z13.000
-G91
-G90
-""",
-            "--translate_drill",
-        )
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-( G99 )
-( G81 X1.000 Y2.000 Z0.000 F7380.000 R5.000 )
-G90
-G0 Z13.000
-G0 X2.000 Y4.000
-G1 Z8.000 F7380.000
-G0 Z13.000
-G91
-( G80 )
-G90
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments --translate_drill",
-        )
-
-    def test01820(self):
-        """Test G82 command Generation."""
-        path = [
-            Path.Command("G0 X1 Y2"),
-            Path.Command("G0 Z8"),
-            Path.Command("G90"),
-            Path.Command("G99"),
-            Path.Command("G82 X1 Y2 Z0 F123 R5 P1.23456"),
-            Path.Command("G80"),
-            Path.Command("G90"),
-        ]
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-G99
-G82 X1.000 Y2.000 Z0.000 F7380.000 R5.000 P1.23456
-G80
-G90
-""",
-            "",
-        )
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-G0 X1.000 Y2.000
-G1 Z5.000 F7380.000
-G1 Z0.000 F7380.000
-G4 P1.23456
-G0 Z5.000
-G90
-""",
-            "--translate_drill",
-        )
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-( G99 )
-( G82 X1.000 Y2.000 Z0.000 F7380.000 R5.000 P1.23456 )
-G0 X1.000 Y2.000
-G1 Z5.000 F7380.000
-G1 Z0.000 F7380.000
-G4 P1.23456
-G0 Z5.000
-( G80 )
-G90
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments --translate_drill",
-        )
-        #
-        # Re-initialize all of the values before doing more tests.
-        #
-        postprocessor.init_values(postprocessor.values)
-        #
-        # Test translate_drill with G82 and G91.
-        path = [
-            Path.Command("G0 X1 Y2"),
-            Path.Command("G0 Z8"),
-            Path.Command("G91"),
-            Path.Command("G99"),
-            Path.Command("G82 X1 Y2 Z0 F123 R5 P1.23456"),
-            Path.Command("G80"),
-            Path.Command("G90"),
-        ]
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-G99
-G82 X1.000 Y2.000 Z0.000 F7380.000 R5.000 P1.23456
-G80
-G90
-""",
-            "--no-comments --no-translate_drill",
-        )
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-G90
-G0 Z13.000
-G0 X2.000 Y4.000
-G1 Z8.000 F7380.000
-G4 P1.23456
-G0 Z13.000
-G91
-G90
-""",
-            "--translate_drill",
-        )
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-( G99 )
-( G82 X1.000 Y2.000 Z0.000 F7380.000 R5.000 P1.23456 )
-G90
-G0 Z13.000
-G0 X2.000 Y4.000
-G1 Z8.000 F7380.000
-G4 P1.23456
-G0 Z13.000
-G91
-( G80 )
-G90
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments --translate_drill",
-        )
-
-<<<<<<< HEAD
-        expected = """G90
-G20
-G64 Q0.1798 P0.1361
-"""
-        args = "--inches"
+        args = "--feed-precision=2"
         gcode = postprocessor.export(postables, "gcode.tmp", args)
         # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
->>>>>>> 327e6ccf29 (Path:  Added more tests and fixed some parameter handling.)
-=======
-    def test01830(self):
-        """Test G83 command Generation."""
-        path = [
-            Path.Command("G0 X1 Y2"),
-            Path.Command("G0 Z8"),
-            Path.Command("G90"),
-            Path.Command("G99"),
-            Path.Command("G83 X1 Y2 Z0 F123 Q1.5 R5"),
-            Path.Command("G80"),
-            Path.Command("G90"),
-        ]
+        # Note:  The "internal" F speed is in mm/s,
+        #        while the output F speed is in mm/min.
+        self.assertEqual(gcode.splitlines()[2], "G1 X10.000 Y20.000 Z30.000 F7387.41")
+
+    #############################################################################
+
+    def test00145(self) -> None:
+        """Test the finish label argument."""
+        # test the default finish label
         self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-G99
-G83 X1.000 Y2.000 Z0.000 F7380.000 Q1.500 R5.000
-G80
-G90
-""",
-            "",
-        )
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-G0 X1.000 Y2.000
-G1 Z5.000 F7380.000
-G1 Z3.500 F7380.000
-G0 Z5.000
-G0 Z3.575
-G1 Z2.000 F7380.000
-G0 Z5.000
-G0 Z2.075
-G1 Z0.500 F7380.000
-G0 Z5.000
-G0 Z0.575
-G1 Z0.000 F7380.000
-G0 Z5.000
-G90
-""",
-            "--translate_drill",
-        )
-        self.single_compare(
-            path,
+            [],
             """(Begin preamble)
 G90
 G21
 (Begin operation)
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-( G99 )
-( G83 X1.000 Y2.000 Z0.000 F7380.000 Q1.500 R5.000 )
-G0 X1.000 Y2.000
-G1 Z5.000 F7380.000
-G1 Z3.500 F7380.000
-G0 Z5.000
-G0 Z3.575
-G1 Z2.000 F7380.000
-G0 Z5.000
-G0 Z2.075
-G1 Z0.500 F7380.000
-G0 Z5.000
-G0 Z0.575
-G1 Z0.000 F7380.000
-G0 Z5.000
-( G80 )
-G90
 (Finish operation: testpath)
 (Begin postamble)
 """,
-            "--comments --translate_drill",
+            "--comments",
         )
-        #
-        # Re-initialize all of the values before doing more tests.
-        #
-        postprocessor.init_values(postprocessor.values)
-        #
-        c = Path.Command("G64 P3.456789 Q4.567891")
 
-        self.docobj.Path = Path.Path([c])
+        # test a changed finish label
+        self.single_compare(
+            [],
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(End operation: testpath)
+(Begin postamble)
+""",
+            "--finish_label='End' --comments",
+        )
+
+    #############################################################################
+
+    def test00150(self) -> None:
+        """Test output with an empty path.
+
+        Also tests the interactions between --comments and --header.
+        """
+        args: str
+        expected: str
+        gcode: str
+
+        self.docobj.Path = Path.Path([])
         postables = [self.docobj]
 
-        expected = """G90
-G20
-G64 Q0.1798 P0.1361
+        # Test generating with comments and header.
+        # The header contains a time stamp that messes up unit testing.
+        # Only test the length of the line that contains the time.
+        args = "--comments --header"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[0], "(Exported by FreeCAD)")
+        self.assertEqual(
+            gcode.splitlines()[1],
+            "(Post Processor: PathScripts.post.refactored_test_post)",
+        )
+        self.assertEqual(gcode.splitlines()[2], "(Cam File: )")
+        self.assertIn("(Output Time: ", gcode.splitlines()[3])
+        self.assertTrue(len(gcode.splitlines()[3]) == 41)
+        self.assertEqual(gcode.splitlines()[4], "(Begin preamble)")
+        self.assertEqual(gcode.splitlines()[5], "G90")
+        self.assertEqual(gcode.splitlines()[6], "G21")
+        self.assertEqual(gcode.splitlines()[7], "(Begin operation)")
+        self.assertEqual(gcode.splitlines()[8], "(Finish operation: testpath)")
+        self.assertEqual(gcode.splitlines()[9], "(Begin postamble)")
+
+        # Test with comments without header.
+        expected = """(Begin preamble)
+G90
+G21
+(Begin operation)
+(Finish operation: testpath)
+(Begin postamble)
 """
-        args = "--inches"
+        args = "--comments --no-header"
         gcode = postprocessor.export(postables, "gcode.tmp", args)
         # print("--------\n" + gcode + "--------\n")
         self.assertEqual(gcode, expected)
->>>>>>> 327e6ccf29 (Path:  Added more tests and fixed some parameter handling.)
+
+        # Test without comments with header.
+        args = "--no-comments --header"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[0], "(Exported by FreeCAD)")
+        self.assertEqual(
+            gcode.splitlines()[1],
+            "(Post Processor: PathScripts.post.refactored_test_post)",
+        )
+        self.assertEqual(gcode.splitlines()[2], "(Cam File: )")
+        self.assertIn("(Output Time: ", gcode.splitlines()[3])
+        self.assertTrue(len(gcode.splitlines()[3]) == 41)
+        self.assertEqual(gcode.splitlines()[4], "G90")
+        self.assertEqual(gcode.splitlines()[5], "G21")
+
+        # Test without comments or header.
+        expected = """G90
+G21
+"""
+        args = "--no-comments --no-header"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode, expected)
+
+    #############################################################################
+
+    def test00160(self) -> None:
+        """Test Line Numbers."""
+        self.compare_third_line(
+            "G0 X10 Y20 Z30", "N120 G0 X10.000 Y20.000 Z30.000", "--line-numbers"
+        )
+        self.compare_third_line(
+            "G0 X10 Y20 Z30", "G0 X10.000 Y20.000 Z30.000", "--no-line-numbers"
+        )
+
+    #############################################################################
+
+    def test00165(self) -> None:
+        """Test line number increment."""
+        path = [
+            Path.Command("G0 X1 Y2"),
+            Path.Command("G0 Z8"),
+        ]
+        # check the default line number increment
+        self.single_compare(
+            path,
+            """N100 G90
+N110 G21
+N120 G0 X1.000 Y2.000
+N130 G0 Z8.000
+""",
+            "--line-numbers",
+        )
+
+        # check a non-default line number increment
+        self.single_compare(
+            path,
+            """N140 G90
+N143 G21
+N146 G0 X1.000 Y2.000
+N149 G0 Z8.000
+""",
+            "--line-numbers --line_number_increment=3",
+        )
+
+        # check a non-default starting line number
+        self.single_compare(
+            path,
+            """N123 G90
+N126 G21
+N129 G0 X1.000 Y2.000
+N132 G0 Z8.000
+""",
+            "--line-numbers --line_number_increment=3 --line_number_start=123",
+        )
+
+    #############################################################################
+
+    def test00166(self) -> None:
+        """Test listing tools in preamble."""
+
+        # test the default behavior for listing tools in the preamble
+        args: str
+        attrs: Dict[str, Any]
+        expected: str
+        gcode: str
+
+        path = [
+            Path.Command("M6 T2"),
+            Path.Command("M3 S3000"),
+        ]
+        self.docobj.Path = Path.Path(path)
+        default_tool_controller = PathToolController.Create()
+        attrs = {
+            "shape": None,
+            "name": "T2",
+            "parameter": {"Diameter": 1.75},
+            "attribute": [],
+        }
+        tool2 = PathToolBit.Factory.CreateFromAttrs(attrs, "T2")
+        tool2_controller = PathToolController.Create(
+            name="TC2", tool=tool2, toolNumber=2
+        )
+        postables = [default_tool_controller, tool2_controller, self.docobj]
+        expected = """(Begin preamble)
+G90
+G21
+(Begin operation)
+(Begin toolchange)
+M6 T2
+M3 S3000
+(Finish operation: testpath)
+(Begin postamble)
+"""
+        args = "--comments --tool_change --list_tools_in_preamble"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        print("--------\n" + gcode + "--------\n")
+        self.docobj.removeProperty("tool2")
+        self.assertEqual(gcode, expected)
+
+    #############################################################################
+
+    def test00170(self) -> None:
+        """Test metric and inches."""
+        args: str
+        gcode: str
+
+        c = Path.Command("G0 X10 Y20 Z30 A10 B20 C30 U10 V20 W30")
+        self.docobj.Path = Path.Path([c])
+        postables = [self.docobj]
+        args = "--inches"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[1], "G20")
+        self.assertEqual(
+            gcode.splitlines()[2],
+            "G0 X0.3937 Y0.7874 Z1.1811 A0.3937 B0.7874 C1.1811 U0.3937 V0.7874 W1.1811",
+        )
+        args = "--metric"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[1], "G21")
+        self.assertEqual(
+            gcode.splitlines()[2],
+            "G0 X10.000 Y20.000 Z30.000 A10.000 B20.000 C30.000 U10.000 V20.000 W30.000",
+        )
+
+    #############################################################################
+
+    def test00180(self) -> None:
+        """Test modal.
+
+        Suppress the command name if the same as previous
+        """
+        args: str
+        gcode: str
+
+        c = Path.Command("G0 X10 Y20 Z30")
+        c1 = Path.Command("G0 X10 Y30 Z30")
+        self.docobj.Path = Path.Path([c, c1])
+        postables = [self.docobj]
+        args = "--modal"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[3], "X10.000 Y30.000 Z30.000")
+        args = "--no-modal"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[3], "G0 X10.000 Y30.000 Z30.000")
+
+    #############################################################################
+
+    def test00190(self) -> None:
+        """Test Outputting all arguments.
+
+        Empty path.  Outputs all arguments.
+        """
+        self.single_compare(
+            [],
+            """Arguments that are commonly used:
+  --metric              Convert output for Metric mode (G21) (default)
+  --inches              Convert output for US imperial mode (G20)
+  --axis-modal          Don't output axis values if they are the same as the
+                        previous line
+  --no-axis-modal       Output axis values even if they are the same as the
+                        previous line (default)
+  --axis-precision AXIS_PRECISION
+                        Number of digits of precision for axis moves, default
+                        is 3
+  --bcnc                Add Job operations as bCNC block headers. Consider
+                        suppressing comments by adding --no-comments
+  --no-bcnc             Suppress bCNC block header output (default)
+  --chipbreaking_amount CHIPBREAKING_AMOUNT
+                        Amount to move for chipbreaking in a translated G73
+                        command, default is 0.25 mm
+  --command_space COMMAND_SPACE
+                        The character to use between parts of a command,
+                        default is a space, may also use a null string
+  --comments            Output comments (default)
+  --no-comments         Suppress comment output
+  --comment_symbol COMMENT_SYMBOL
+                        The character used to start a comment, default is "("
+  --enable_coolant      Enable coolant
+  --disable_coolant     Disable coolant (default)
+  --enable_machine_specific_commands
+                        Enable machine specific commands of the form
+                        (MC_RUN_COMMAND: blah)
+  --disable_machine_specific_commands
+                        Disable machine specific commands (default)
+  --end_of_line_characters END_OF_LINE_CHARACTERS
+                        The character(s) to use at the end of each line in the
+                        output file, default is whatever the system uses, may
+                        also use '\\n' or '\\r\\n'
+  --feed-precision FEED_PRECISION
+                        Number of digits of precision for feed rate, default
+                        is 3
+  --finish_label FINISH_LABEL
+                        The characters to use in the 'Finish operation'
+                        comment, default is "Finish"
+  --header              Output headers (default)
+  --no-header           Suppress header output
+  --line_number_increment LINE_NUMBER_INCREMENT
+                        Amount to increment the line numbers, default is 10
+  --line_number_start LINE_NUMBER_START
+                        The number the line numbers start at, default is 100
+  --line-numbers        Prefix with line numbers
+  --no-line-numbers     Don't prefix with line numbers (default)
+  --list_tools_in_preamble
+                        List the tools used in the operation in the preamble
+  --no-list_tools_in_preamble
+                        Don't list the tools used in the operation (default)
+  --modal               Don't output the G-command name if it is the same as
+                        the previous line
+  --no-modal            Output the G-command name even if it is the same as
+                        the previous line (default)
+  --output_adaptive     Enables special processing for operations with
+                        'Adaptive' in the name
+  --no-output_adaptive  Disables special processing for operations with
+                        'Adaptive' in the name (default)
+  --output_all_arguments
+                        Output all of the available arguments
+  --no-output_all_arguments
+                        Don't output all of the available arguments (default)
+  --output_machine_name
+                        Output the machine name in the pre-operation
+                        information
+  --no-output_machine_name
+                        Don't output the machine name in the pre-operation
+                        information (default)
+  --output_path_labels  Output Path labels at the beginning of each Path
+  --no-output_path_labels
+                        Don't output Path labels at the beginning of each Path
+                        (default)
+  --output_visible_arguments
+                        Output all of the visible arguments
+  --no-output_visible_arguments
+                        Don't output the visible arguments (default)
+  --postamble POSTAMBLE
+                        Set commands to be issued after the last command,
+                        default is ""
+  --post_operation POST_OPERATION
+                        Set commands to be issued after every operation,
+                        default is ""
+  --preamble PREAMBLE   Set commands to be issued before the first command,
+                        default is ""
+  --precision PRECISION
+                        Number of digits of precision for both feed rate and
+                        axis moves, default is 3 for metric or 4 for inches
+  --return-to RETURN_TO
+                        Move to the specified x,y,z coordinates at the end,
+                        e.g. --return-to=0,0,0 (default is do not move)
+  --show-editor         Pop up editor before writing output (default)
+  --no-show-editor      Don't pop up editor before writing output
+  --tlo                 Output tool length offset (G43) following tool changes
+                        (default)
+  --no-tlo              Suppress tool length offset (G43) following tool
+                        changes
+  --tool_change         Insert M6 and any other tool change G-code for all
+                        tool changes (default)
+  --no-tool_change      Convert M6 to a comment for all tool changes
+  --translate_drill     Translate drill cycles G73, G81, G82 & G83 into G0/G1
+                        movements
+  --no-translate_drill  Don't translate drill cycles G73, G81, G82 & G83 into
+                        G0/G1 movements (default)
+  --wait-for-spindle WAIT_FOR_SPINDLE
+                        Time to wait (in seconds) after M3, M4 (default = 0.0)
+""",
+            "--output_all_arguments",
+            True,
+        )
+
+    #############################################################################
+
+    def test00200(self) -> None:
+        """Test Outputting visible arguments.
+
+        Empty path.  Outputs visible arguments.
+        """
+        self.single_compare([], "", "--output_visible_arguments")
+
+    #############################################################################
+
+    def test00205(self) -> None:
+        """Test output_machine_name argument."""
+        # test the default behavior
+        self.single_compare(
+            [],
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--comments",
+        )
+
+        # test outputting the machine name
+        self.single_compare(
+            [],
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(Machine: test, mm/min)
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--output_machine_name --comments",
+        )
+
+        # test not outputting the machine name
+        self.single_compare(
+            [],
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--no-output_machine_name --comments",
+        )
+
+    #############################################################################
+
+    def test00206(self) -> None:
+        """Test output_path_labels argument."""
+        # test the default behavior
+        self.single_compare(
+            [],
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--comments",
+        )
+
+        # test outputting the path labels
+        self.single_compare(
+            [],
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(Path: testpath)
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--output_path_labels --comments",
+        )
+
+        # test not outputting the path labels
+        self.single_compare(
+            [],
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--no-output_path_labels --comments",
+        )
+
+    #############################################################################
+
+    def test00210(self) -> None:
+        """Test Postamble."""
+        args: str
+        gcode: str
+
+        self.docobj.Path = Path.Path([])
+        postables = [self.docobj]
+        args = "--postamble='G0 Z50\nM2'"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[-2], "G0 Z50")
+        self.assertEqual(gcode.splitlines()[-1], "M2")
+
+    #############################################################################
+
+    def test00215(self) -> None:
+        """Test the post_operation argument."""
+        self.single_compare(
+            [],
+            """G90
+G21
+G90 G80
+G40 G49
+""",
+            "--post_operation='G90 G80\nG40 G49'",
+        )
+
+    #############################################################################
+
+    def test00220(self) -> None:
+        """Test Preamble."""
+        args: str
+        gcode: str
+
+        self.docobj.Path = Path.Path([])
+        postables = [self.docobj]
+        args = "--preamble='G18 G55'"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[0], "G18 G55")
+
+    #############################################################################
+
+    def test00230(self) -> None:
+        """Test precision."""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 F100",
+            "G1 X10.00 Y20.00 Z30.00 F6000.00",
+            "--precision=2",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 F100",
+            "G1 X0.39 Y0.79 Z1.18 F236.22",
+            "--inches --precision=2",
+        )
+
+    #############################################################################
+
+    def test00240(self) -> None:
+        """Test return-to."""
+        self.compare_third_line("", "G0 X12 Y34 Z56", "--return-to='12,34,56'")
+
+    #############################################################################
+
+    # The --show-editor argument must be tested interactively.
+    # The --no-show-editor argument is also the default.
+
+    #############################################################################
+
+    def test00250(self) -> None:
+        """Test tlo."""
+        args: str
+        gcode: str
+
+        c = Path.Command("M6 T2")
+        c2 = Path.Command("M3 S3000")
+        self.docobj.Path = Path.Path([c, c2])
+        postables = [self.docobj]
+        args = "--tlo"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[2], "M6 T2")
+        self.assertEqual(gcode.splitlines()[3], "G43 H2")
+        self.assertEqual(gcode.splitlines()[4], "M3 S3000")
+        # suppress TLO
+        args = "--no-tlo"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[2], "M6 T2")
+        self.assertEqual(gcode.splitlines()[3], "M3 S3000")
+
+    #############################################################################
+
+    def test00260(self) -> None:
+        """Test tool_change."""
+        args: str
+        gcode: str
+
+        c = Path.Command("M6 T2")
+        c2 = Path.Command("M3 S3000")
+        self.docobj.Path = Path.Path([c, c2])
+        postables = [self.docobj]
+        args = "--tool_change"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[2], "M6 T2")
+        self.assertEqual(gcode.splitlines()[3], "M3 S3000")
+        args = "--comments --no-tool_change"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[5], "( M6 T2 )")
+        self.assertEqual(gcode.splitlines()[6], "M3 S3000")
+
+    #############################################################################
+
+    # The --translate_drill and --no-translate_drill arguments
+    # are tested in the tests for G73, G81, G82, and G83.
+
+    #############################################################################
+
+    def test00270(self) -> None:
+        """Test wait-for-spindle."""
+        args: str
+        gcode: str
+
+        c = Path.Command("M3 S3000")
+        self.docobj.Path = Path.Path([c])
+        postables = [self.docobj]
+        args = ""
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[2], "M3 S3000")
+        args = "--wait-for-spindle=1.23456"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[2], "M3 S3000")
+        self.assertEqual(gcode.splitlines()[3], "G4 P1.23456")
+        c = Path.Command("M4 S3000")
+        self.docobj.Path = Path.Path([c])
+        postables = [self.docobj]
+        # This also tests that the default for --wait-for-spindle
+        # goes back to 0.0 (no wait)
+        args = ""
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[2], "M4 S3000")
+        args = "--wait-for-spindle=1.23456"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        self.assertEqual(gcode.splitlines()[2], "M4 S3000")
+        self.assertEqual(gcode.splitlines()[3], "G4 P1.23456")
