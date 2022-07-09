@@ -1115,175 +1115,6 @@ G90
             "--comments --translate_drill",
         )
 
-    def test01730(self):
-        """Test G73 command Generation."""
-        path = [
-            Path.Command("G0 X1 Y2"),
-            Path.Command("G0 Z8"),
-            Path.Command("G90"),
-            Path.Command("G99"),
-            Path.Command("G73 X1 Y2 Z0 F123 Q1.5 R5"),
-            Path.Command("G80"),
-            Path.Command("G90"),
-        ]
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-G99
-G73 X1.000 Y2.000 Z0.000 F7380.000 Q1.500 R5.000
-G80
-G90
-""",
-            "",
-        )
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-G0 X1.000 Y2.000
-G1 Z5.000 F7380.000
-G1 Z3.500 F7380.000
-G0 Z3.750
-G0 Z3.575
-G1 Z2.000 F7380.000
-G0 Z2.250
-G0 Z2.075
-G1 Z0.500 F7380.000
-G0 Z0.750
-G0 Z0.575
-G1 Z0.000 F7380.000
-G0 Z5.000
-G90
-""",
-            "--translate_drill",
-        )
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X1.000 Y2.000
-G0 Z8.000
-G90
-( G99 )
-( G73 X1.000 Y2.000 Z0.000 F7380.000 Q1.500 R5.000 )
-G0 X1.000 Y2.000
-G1 Z5.000 F7380.000
-G1 Z3.500 F7380.000
-G0 Z3.750
-G0 Z3.575
-G1 Z2.000 F7380.000
-G0 Z2.250
-G0 Z2.075
-G1 Z0.500 F7380.000
-G0 Z0.750
-G0 Z0.575
-G1 Z0.000 F7380.000
-G0 Z5.000
-( G80 )
-G90
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments --translate_drill",
-        )
-        #
-        # Re-initialize all of the values before doing more tests.
-        #
-        postprocessor.init_values(postprocessor.values)
-        #
-        # Test translate_drill with G83 and G91.
-        path = [
-            Path.Command("G0 X1 Y2"),
-            Path.Command("G0 Z8"),
-            Path.Command("G91"),
-            Path.Command("G99"),
-            Path.Command("G73 X1 Y2 Z0 F123 Q1.5 R5"),
-            Path.Command("G80"),
-            Path.Command("G90"),
-        ]
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-G99
-G73 X1.000 Y2.000 Z0.000 F7380.000 Q1.500 R5.000
-G80
-G90
-""",
-            "--no-comments --no-translate_drill",
-        )
-        self.single_compare(
-            path,
-            """G90
-G21
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-G90
-G0 Z13.000
-G0 X2.000 Y4.000
-G1 Z11.500 F7380.000
-G0 Z11.750
-G0 Z11.575
-G1 Z10.000 F7380.000
-G0 Z10.250
-G0 Z10.075
-G1 Z8.500 F7380.000
-G0 Z8.750
-G0 Z8.575
-G1 Z8.000 F7380.000
-G0 Z13.000
-G91
-G90
-""",
-            "--translate_drill",
-        )
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X1.000 Y2.000
-G0 Z8.000
-G91
-( G99 )
-( G73 X1.000 Y2.000 Z0.000 F7380.000 Q1.500 R5.000 )
-G90
-G0 Z13.000
-G0 X2.000 Y4.000
-G1 Z11.500 F7380.000
-G0 Z11.750
-G0 Z11.575
-G1 Z10.000 F7380.000
-G0 Z10.250
-G0 Z10.075
-G1 Z8.500 F7380.000
-G0 Z8.750
-G0 Z8.575
-G1 Z8.000 F7380.000
-G0 Z13.000
-G91
-( G80 )
-G90
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments --translate_drill",
-        )
-
     def test01810(self):
         """Test G81 command Generation."""
         path = [
@@ -1722,6 +1553,87 @@ G90
 """,
             "--comments --translate_drill",
         )
+
+    def test01900(self):
+        """Test G90 command Generation."""
+        self.compare_third_line("G90", "G90", "")
+
+    def test01901(self):
+        """Test G90.1 command Generation."""
+        self.compare_third_line("G90.1", "G90.1", "")
+
+    def test01910(self):
+        """Test G91 command Generation."""
+        self.compare_third_line("G91", "G91", "")
+
+    def test01911(self):
+        """Test G91.1 command Generation."""
+        self.compare_third_line("G91.1", "G91.1", "")
+
+    def test01920(self):
+        """Test G92 command Generation."""
+        self.compare_third_line(
+            "G92 X10 Y20 Z30 A40 B50 C60 U70 V80 W90",
+            "G92 X10.000 Y20.000 Z30.000 A40.000 B50.000 C60.000 U70.000 V80.000 W90.000",
+            "",
+        )
+
+    def test01921(self):
+        """Test G92.1 command Generation."""
+        self.compare_third_line("G92.1", "G92.1", "")
+
+    def test01922(self):
+        """Test G92.2 command Generation."""
+        self.compare_third_line("G92.2", "G92.2", "")
+
+    def test01923(self):
+        """Test G92.3 command Generation."""
+        self.compare_third_line("G92.3", "G92.3", "")
+
+    def test01930(self):
+        """Test G93 command Generation."""
+        self.compare_third_line("G93", "G93", "")
+
+    def test01940(self):
+        """Test G94 command Generation."""
+        self.compare_third_line("G94", "G94", "")
+
+    def test01950(self):
+        """Test G95 command Generation."""
+        self.compare_third_line("G95", "G95", "")
+
+    def test01980(self):
+        """Test G98 command Generation."""
+        self.compare_third_line("G98", "G98", "")
+
+    def test01990(self):
+        """Test G99 command Generation."""
+        self.compare_third_line("G99", "G99", "")
+
+    def test02000(self):
+        """Test M0 command Generation."""
+        self.compare_third_line("M0", "M0", "")
+        self.compare_third_line("M00", "M00", "")
+
+    def test02010(self):
+        """Test M1 command Generation."""
+        self.compare_third_line("M1", "M1", "")
+        self.compare_third_line("M01", "M01", "")
+
+    def test02020(self):
+        """Test M2 command Generation."""
+        self.compare_third_line("M2", "M2", "")
+        self.compare_third_line("M02", "M02", "")
+
+    def test02030(self):
+        """Test M3 command Generation."""
+        self.compare_third_line("M3", "M3", "")
+        self.compare_third_line("M03", "M03", "")
+
+    def test02040(self):
+        """Test M4 command Generation."""
+        self.compare_third_line("M4", "M4", "")
+        self.compare_third_line("M04", "M04", "")
 
     def test02050(self):
         """Test M5 command Generation."""
