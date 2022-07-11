@@ -220,6 +220,10 @@ def init_shared_arguments(values, argument_defaults, arguments_visible):
     # postprocessors.  If both --axis-precision and --precision are provided, the
     # --axis-precision value "wins".  If both --feed-precision and --precision are
     # provided, the --feed-precision value "wins".
+    # The --precision argument is included for backwards compatibility with some
+    # postprocessors.  If both --axis-precision and --precision are provided, the
+    # --axis-precision value "wins".  If both --feed-precision and --precision are
+    # provided, the --feed-precision value "wins".
     if arguments_visible["precision"]:
         help_message = f'Number of digits of precision for both feed rate and axis moves, default is {str(values["DEFAULT_AXIS_PRECISION"])} for metric or {str(values["DEFAULT_INCH_AXIS_PRECISION"])} for inches'
     else:
@@ -288,6 +292,8 @@ def init_shared_values(values):
     #
     values["AXIS_PRECISION"] = 3
     #
+    # How far to move up (in millimeters) in the Z axis when chipbreaking
+    # with a G73 command.
     # How far to move up (in millimeters) in the Z axis when chipbreaking
     # with a G73 command.
     #
