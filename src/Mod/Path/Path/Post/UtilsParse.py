@@ -160,7 +160,7 @@ def drill_translate(values, cmd, params):
         drill_Step = Units.Quantity(params["Q"], Units.Length)
         # NIST 3.5.16.4 G83 Cycle:  "current hole bottom, backed off a bit."
         a_bit = drill_Step * 0.05
-    elif cmd == "G82":
+    if cmd == "G82":
         drill_DwellTime = params["P"]
 
     # wrap this block to ensure machine's values["MOTION_MODE"] is restored
