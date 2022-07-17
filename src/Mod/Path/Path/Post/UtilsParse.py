@@ -133,6 +133,10 @@ def drill_translate(values, cmd, params):
     drill_Y = Units.Quantity(params["Y"], Units.Length)
     drill_Z = Units.Quantity(params["Z"], Units.Length)
     RETRACT_Z = Units.Quantity(params["R"], Units.Length)
+    drill_X = Units.Quantity(params["X"], Units.Length)
+    drill_Y = Units.Quantity(params["Y"], Units.Length)
+    drill_Z = Units.Quantity(params["Z"], Units.Length)
+    RETRACT_Z = Units.Quantity(params["R"], Units.Length)
     # R less than Z is error
     if RETRACT_Z < drill_Z:
         comment = create_comment(values, "Drill cycle error: R less than Z")
@@ -150,11 +154,13 @@ def drill_translate(values, cmd, params):
 
     # get the other parameters
     drill_feedrate = Units.Quantity(params["F"], Units.Velocity)
+    drill_feedrate = Units.Quantity(params["F"], Units.Velocity)
     if cmd in ("G73", "G83"):
+        drill_Step = Units.Quantity(params["Q"], Units.Length)
         drill_Step = Units.Quantity(params["Q"], Units.Length)
         # NIST 3.5.16.4 G83 Cycle:  "current hole bottom, backed off a bit."
         a_bit = drill_Step * 0.05
-    elif cmd == "G82":
+    if cmd == "G82":
         drill_DwellTime = params["P"]
 
     # wrap this block to ensure machine's values["MOTION_MODE"] is restored
@@ -220,6 +226,7 @@ def drill_translate(values, cmd, params):
         print("exception occurred", err)
 
     if values["MOTION_MODE"] == "G91":
+        trBuff += f"{linenumber(values)}G91{nl}"  # Restore if changed
         trBuff += f"{linenumber(values)}G91{nl}"  # Restore if changed
 
     return trBuff

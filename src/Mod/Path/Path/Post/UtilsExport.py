@@ -67,9 +67,12 @@ def export_common(values, objectslist, filename):
     #
     nl = "\n"
 
+    nl = "\n"
+
     for obj in objectslist:
         if not hasattr(obj, "Path"):
             print(
+                f"The object {obj.Name} is not a path. Please select only path and Compounds."
                 f"The object {obj.Name} is not a path. Please select only path and Compounds."
             )
             return None
@@ -77,6 +80,7 @@ def export_common(values, objectslist, filename):
     # for obj in objectslist:
     #    print(obj.Name)
 
+    print(f'PostProcessor:  {values["POSTPROCESSOR_FILE_NAME"]} postprocessing...')
     print(f'PostProcessor:  {values["POSTPROCESSOR_FILE_NAME"]} postprocessing...')
     gcode = ""
 
@@ -108,6 +112,7 @@ def export_common(values, objectslist, filename):
 
     for line in values["SAFETYBLOCK"].splitlines(False):
         gcode += f"{PostUtilsParse.linenumber(values)}{line}{nl}"
+        gcode += f"{PostUtilsParse.linenumber(values)}{line}{nl}"
 
     # Write the preamble
     if values["OUTPUT_COMMENTS"]:
@@ -124,12 +129,14 @@ def export_common(values, objectslist, filename):
         gcode += f"{PostUtilsParse.linenumber(values)}{comment}{nl}"
     for line in values["PREAMBLE"].splitlines(False):
         gcode += f"{PostUtilsParse.linenumber(values)}{line}{nl}"
+        gcode += f"{PostUtilsParse.linenumber(values)}{line}{nl}"
     # verify if PREAMBLE or SAFETYBLOCK have changed MOTION_MODE or UNITS
     if "G90" in values["PREAMBLE"] or "G90" in values["SAFETYBLOCK"]:
         values["MOTION_MODE"] = "G90"
     elif "G91" in values["PREAMBLE"] or "G91" in values["SAFETYBLOCK"]:
         values["MOTION_MODE"] = "G91"
     else:
+        gcode += f'{PostUtilsParse.linenumber(values)}{values["MOTION_MODE"]}{nl}'
         gcode += f'{PostUtilsParse.linenumber(values)}{values["MOTION_MODE"]}{nl}'
     if "G21" in values["PREAMBLE"] or "G21" in values["SAFETYBLOCK"]:
         values["UNITS"] = "G21"
@@ -171,13 +178,16 @@ def export_common(values, objectslist, filename):
                     values, f'Machine units: {values["UNIT_SPEED_FORMAT"]}'
                 )
                 gcode += f"{PostUtilsParse.linenumber(values)}{comment}{nl}"
+                gcode += f"{PostUtilsParse.linenumber(values)}{comment}{nl}"
             if values["OUTPUT_MACHINE_NAME"]:
                 comment = PostUtilsParse.create_comment(
                     values,
                     f'Machine: {values["MACHINE_NAME"]}, {values["UNIT_SPEED_FORMAT"]}',
                 )
                 gcode += f"{PostUtilsParse.linenumber(values)}{comment}{nl}"
+                gcode += f"{PostUtilsParse.linenumber(values)}{comment}{nl}"
         for line in values["PRE_OPERATION"].splitlines(False):
+            gcode += f"{PostUtilsParse.linenumber(values)}{line}{nl}"
             gcode += f"{PostUtilsParse.linenumber(values)}{line}{nl}"
 
         # get coolant mode
@@ -212,7 +222,9 @@ def export_common(values, objectslist, filename):
                 values, f'{values["FINISH_LABEL"]} operation: {obj.Label}'
             )
             gcode += f"{PostUtilsParse.linenumber(values)}{comment}{nl}"
+            gcode += f"{PostUtilsParse.linenumber(values)}{comment}{nl}"
         for line in values["POST_OPERATION"].splitlines(False):
+            gcode += f"{PostUtilsParse.linenumber(values)}{line}{nl}"
             gcode += f"{PostUtilsParse.linenumber(values)}{line}{nl}"
 
         # turn coolant off if required
@@ -225,6 +237,10 @@ def export_common(values, objectslist, filename):
             gcode += f"{PostUtilsParse.linenumber(values)}M9{nl}"
 
     if values["RETURN_TO"]:
+        num_x = values["RETURN_TO"][0]
+        num_y = values["RETURN_TO"][1]
+        num_z = values["RETURN_TO"][2]
+        gcode += f"{PostUtilsParse.linenumber(values)}G0 X{num_x} Y{num_y} Z{num_z}{nl}"
         num_x = values["RETURN_TO"][0]
         num_y = values["RETURN_TO"][1]
         num_z = values["RETURN_TO"][2]
