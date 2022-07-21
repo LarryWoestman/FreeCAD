@@ -156,6 +156,10 @@ def export_common(values, objectslist, filename):
             continue
         if hasattr(obj, "Base") and hasattr(obj.Base, "Active") and not obj.Base.Active:
             continue
+        if hasattr(obj, "Active") and not obj.Active:
+            continue
+        if hasattr(obj, "Base") and hasattr(obj.Base, "Active") and not obj.Base.Active:
+            continue
 
         # do the pre_op
         if values["OUTPUT_BCNC"]:
