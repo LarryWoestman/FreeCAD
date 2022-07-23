@@ -360,6 +360,31 @@ def parse_a_path(values, pathobj):
                 FreeCAD.Console.PrintWarning(
                     f"Tool Controller Vertical Rapid Values are unset{nl}"
                 )
+    adaptiveOp = False
+    opHorizRapid = 0
+    opVertRapid = 0
+
+    lastcommand = None
+    firstmove = Path.Command("G0", {"X": -1, "Y": -1, "Z": -1, "F": 0.0})
+    currLocation = {}  # keep track for no doubles
+    currLocation.update(firstmove.Parameters)  # set First location Parameters
+
+    if values["OUTPUT_ADAPTIVE"] and "Adaptive" in pathobj.Name:
+        adaptiveOp = True
+        if hasattr(pathobj, "ToolController"):
+            tc = pathobj.ToolController
+            if hasattr(tc, "HorizRapid") and tc.HorizRapid > 0:
+                opHorizRapid = Units.Quantity(tc.HorizRapid, Units.Velocity)
+            else:
+                FreeCAD.Console.PrintWarning(
+                    f"Tool Controller Horizontal Rapid Values are unset{nl}"
+                )
+            if hasattr(tc, "VertRapid") and tc.VertRapid > 0:
+                opVertRapid = Units.Quantity(tc.VertRapid, Units.Velocity)
+            else:
+                FreeCAD.Console.PrintWarning(
+                    f"Tool Controller Vertical Rapid Values are unset{nl}"
+                )
 
     for c in pathobj.Path.Commands:
 
@@ -409,6 +434,18 @@ def parse_a_path(values, pathobj):
             else:
                 param_num = format_for_feed(values, opVertRapid)
             outstring.append(f"F{param_num}")
+        if (
+            values["OUTPUT_ADAPTIVE"]
+            and adaptiveOp
+            and command in values["RAPID_MOVES"]
+            and opHorizRapid
+            and opVertRapid
+        ):
+            if "Z" not in c.Parameters:
+                param_num = format_for_feed(values, opHorizRapid)
+            else:
+                param_num = format_for_feed(values, opVertRapid)
+            outstring.append(f"F{param_num}")
 
         # store the latest command
         lastcommand = command
@@ -422,7 +459,23 @@ def parse_a_path(values, pathobj):
                 values["CURRENT_Y"] = Units.Quantity(c.Parameters["Y"], Units.Length)
             if "Z" in c.Parameters:
                 values["CURRENT_Z"] = Units.Quantity(c.Parameters["Z"], Units.Length)
+        # store the latest command
+        lastcommand = command
+        currLocation.update(c.Parameters)
+        # Memorizes the current position for calculating the related movements
+        # and the withdrawal plan
+        if command in values["MOTION_COMMANDS"]:
+            if "X" in c.Parameters:
+                values["CURRENT_X"] = Units.Quantity(c.Parameters["X"], Units.Length)
+            if "Y" in c.Parameters:
+                values["CURRENT_Y"] = Units.Quantity(c.Parameters["Y"], Units.Length)
+            if "Z" in c.Parameters:
+                values["CURRENT_Z"] = Units.Quantity(c.Parameters["Z"], Units.Length)
 
+        if command in ("G98", "G99"):
+            values["DRILL_RETRACT_MODE"] = command
+        elif command in ("G90", "G91"):
+            values["MOTION_MODE"] = command
         if command in ("G98", "G99"):
             values["DRILL_RETRACT_MODE"] = command
         elif command in ("G90", "G91"):
@@ -443,7 +496,27 @@ def parse_a_path(values, pathobj):
             out += drill_translate(values, command, c.Parameters)
             # Erase the line we just translated
             outstring = []
+        if (
+            values["TRANSLATE_DRILL_CYCLES"]
+            and command in values["DRILL_CYCLES_TO_TRANSLATE"]
+        ):
+            if values["OUTPUT_COMMENTS"]:  # Comment the original command
+                comment = create_comment(
+                    values,
+                    values["COMMAND_SPACE"]
+                    + format_outstring(values, outstring)
+                    + values["COMMAND_SPACE"],
+                )
+                out += f"{linenumber(values)}{comment}{nl}"
+            out += drill_translate(values, command, c.Parameters)
+            # Erase the line we just translated
+            outstring = []
 
+        if values["SPINDLE_WAIT"] > 0 and command in ("M3", "M03", "M4", "M04"):
+            out += f"{linenumber(values)}{format_outstring(values, outstring)}{nl}"
+            num = format_outstring(values, ["G4", f'P{values["SPINDLE_WAIT"]}'])
+            out += f"{linenumber(values)}{num}{nl}"
+            outstring = []
         if values["SPINDLE_WAIT"] > 0 and command in ("M3", "M03", "M4", "M04"):
             out += f"{linenumber(values)}{format_outstring(values, outstring)}{nl}"
             num = format_outstring(values, ["G4", f'P{values["SPINDLE_WAIT"]}'])
@@ -471,7 +544,33 @@ def parse_a_path(values, pathobj):
                 )
                 out += f"{linenumber(values)}{comment}{nl}"
                 outstring = []
+        # Check for Tool Change:
+        if command in ("M6", "M06"):
+            if values["OUTPUT_COMMENTS"]:
+                comment = create_comment(values, "Begin toolchange")
+                out += f"{linenumber(values)}{comment}{nl}"
+            if values["OUTPUT_TOOL_CHANGE"]:
+                if values["STOP_SPINDLE_FOR_TOOL_CHANGE"]:
+                    # stop the spindle
+                    out += f"{linenumber(values)}M5{nl}"
+                for line in values["TOOL_CHANGE"].splitlines(False):
+                    out += f"{linenumber(values)}{line}{nl}"
+            elif values["OUTPUT_COMMENTS"]:
+                # convert the tool change to a comment
+                comment = create_comment(
+                    values,
+                    values["COMMAND_SPACE"]
+                    + format_outstring(values, outstring)
+                    + values["COMMAND_SPACE"],
+                )
+                out += f"{linenumber(values)}{comment}{nl}"
+                outstring = []
 
+        if command == "message" and values["REMOVE_MESSAGES"]:
+            if values["OUTPUT_COMMENTS"] is False:
+                out = []
+            else:
+                outstring.pop(0)  # remove the command
         if command == "message" and values["REMOVE_MESSAGES"]:
             if values["OUTPUT_COMMENTS"] is False:
                 out = []
