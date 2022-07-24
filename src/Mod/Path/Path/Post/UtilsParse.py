@@ -121,6 +121,32 @@ def default_S_parameter(values, command, param, param_value, currLocation):
     return format_for_spindle(values, param_value)
 
 
+def determine_adaptive_op(values, pathobj):
+    """Determine if the pathobj contains an Adaptive operation."""
+    nl = "\n"
+    adaptiveOp = False
+    opHorizRapid = 0
+    opVertRapid = 0
+
+    if values["OUTPUT_ADAPTIVE"] and "Adaptive" in pathobj.Name:
+        adaptiveOp = True
+        if hasattr(pathobj, "ToolController"):
+            tc = pathobj.ToolController
+            if hasattr(tc, "HorizRapid") and tc.HorizRapid > 0:
+                opHorizRapid = Units.Quantity(tc.HorizRapid, Units.Velocity)
+            else:
+                FreeCAD.Console.PrintWarning(
+                    f"Tool Controller Horizontal Rapid Values are unset{nl}"
+                )
+            if hasattr(tc, "VertRapid") and tc.VertRapid > 0:
+                opVertRapid = Units.Quantity(tc.VertRapid, Units.Velocity)
+            else:
+                FreeCAD.Console.PrintWarning(
+                    f"Tool Controller Vertical Rapid Values are unset{nl}"
+                )
+    return (adaptiveOp, opHorizRapid, opVertRapid)
+
+
 def drill_translate(values, cmd, params):
     """Translate drill cycles."""
     trBuff = ""
@@ -338,11 +364,6 @@ def parse_a_path(values, pathobj):
     """Parse a simple Path."""
     nl = "\n"
     out = ""
-
-    adaptiveOp = False
-    opHorizRapid = 0
-    opVertRapid = 0
-
     lastcommand = None
     firstmove = Path.Command("G0", {"X": -1, "Y": -1, "Z": -1, "F": 0.0})
     currLocation = {}  # keep track for no doubles
@@ -396,6 +417,7 @@ def parse_a_path(values, pathobj):
         outstring = []
         # command may contain M code, G code, comment string, etc.
         command = c.Name
+
         if command[0] == "(":
             if not values["OUTPUT_COMMENTS"]:
                 continue
