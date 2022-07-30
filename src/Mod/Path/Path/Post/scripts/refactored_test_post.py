@@ -23,8 +23,17 @@
 # ***************************************************************************
 
 
-import Path.Post.UtilsArguments as PostUtilsArguments
-import Path.Post.UtilsExport as PostUtilsExport
+from typing import Any, Dict, List, Union
+
+import Path.Post.UtilsArguments as UtilsArguments
+import Path.Post.UtilsExport as UtilsExport
+
+# Define some types that are used throughout this file
+PathObject = object
+ObjectsList = List[PathObject]
+Parser = object
+ParserArgs = object
+Values = Dict[str, Any]
 
 #
 # The following variables need to be global variables
@@ -38,7 +47,7 @@ import Path.Post.UtilsExport as PostUtilsExport
 #    need to be defined before the "init_shared_arguments" routine can be
 #    called to create TOOLTIP_ARGS, so they also end up having to be globals.
 #
-TOOLTIP = """This is a postprocessor file for the Path workbench. It is used to
+TOOLTIP: str = """This is a postprocessor file for the Path workbench. It is used to
 test the postprocessor code.  It probably isn't useful for "real" gcode.
 
 import refactored_test_post
@@ -47,15 +56,15 @@ refactored_test_post.export(object,"/path/to/file.ncc","")
 #
 # Default to metric mode
 #
-UNITS = "G21"
+UNITS: str = "G21"
 
 
-def init_values(values):
+def init_values(values: Values) -> None:
     """Initialize values that are used throughout the postprocessor."""
     #
     global UNITS
 
-    PostUtilsArguments.init_shared_values(values)
+    UtilsArguments.init_shared_values(values)
     #
     # Set any values here that need to override the default values set
     # in the init_shared_values routine.
@@ -105,9 +114,9 @@ def init_values(values):
     values["UNITS"] = UNITS
 
 
-def init_argument_defaults(argument_defaults):
+def init_argument_defaults(argument_defaults: Dict[str, bool]) -> None:
     """Initialize which arguments (in a pair) are shown as the default argument."""
-    PostUtilsArguments.init_argument_defaults(argument_defaults)
+    UtilsArguments.init_argument_defaults(argument_defaults)
     #
     # Modify which argument to show as the default in flag-type arguments here.
     # If the value is True, the first argument will be shown as the default.
@@ -125,9 +134,11 @@ def init_argument_defaults(argument_defaults):
     #
 
 
-def init_arguments_visible(arguments_visible):
+def init_arguments_visible(arguments_visible: Dict[str, bool]) -> None:
     """Initialize which argument pairs are visible in TOOLTIP_ARGS."""
-    PostUtilsArguments.init_arguments_visible(arguments_visible)
+    k: str
+
+    UtilsArguments.init_arguments_visible(arguments_visible)
     #
     # Modify the visibility of any arguments from the defaults here.
     #
@@ -138,9 +149,15 @@ def init_arguments_visible(arguments_visible):
         arguments_visible[k] = False
 
 
-def init_arguments(values, argument_defaults, arguments_visible):
+def init_arguments(
+    values: Values,
+    argument_defaults: Dict[str, bool],
+    arguments_visible: Dict[str, bool],
+) -> Parser:
     """Initialize the shared argument definitions."""
-    parser = PostUtilsArguments.init_shared_arguments(
+    parser: Parser
+
+    parser = UtilsArguments.init_shared_arguments(
         values, argument_defaults, arguments_visible
     )
     #
@@ -179,7 +196,7 @@ global_all_visible = init_arguments(
 )
 
 
-def export(objectslist, filename, argstring):
+def export(objectslist: ObjectsList, filename: str, argstring: str) -> str:
     """Postprocess the objects in objectslist to filename."""
     #
     global global_all_visible
@@ -204,4 +221,4 @@ def export(objectslist, filename, argstring):
     #
     UNITS = global_values["UNITS"]
 
-    return PostUtilsExport.export_common(global_values, objectslist, filename)
+    return UtilsExport.export_common(global_values, objectslist, filename)

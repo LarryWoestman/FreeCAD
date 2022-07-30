@@ -33,21 +33,32 @@ These are functions related to arguments and values for creating custom post pro
 import argparse
 import os
 import shlex
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 from FreeCAD import Units
 
 from Path.Post import UtilsParse
 
+# Define some types that are used throughout this file
+Parameter = Union[int, float, str]
+Parameters = Dict[str, Parameter]
+Parser = object
+ParserArgs = object
+ParserArgumentGroup = object
+Values = Dict[str, Any]
+
+ParameterFunction = Callable[[Values, str, str, Parameter, Parameters], str]
+
 
 def add_flag_type_arguments(
-    argument_group,
-    default_flag,
-    true_argument,
-    false_argument,
-    true_help,
-    false_help,
-    visible=True,
-):
+    argument_group: ParserArgumentGroup,
+    default_flag: bool,
+    true_argument: str,
+    false_argument: str,
+    true_help: str,
+    false_help: str,
+    visible: bool = True,
+) -> None:
     """Create an argument specification for an argument that is a flag."""
     if visible:
         if default_flag:
@@ -60,7 +71,7 @@ def add_flag_type_arguments(
     argument_group.add_argument(false_argument, action="store_true", help=false_help)
 
 
-def init_argument_defaults(argument_defaults):
+def init_argument_defaults(argument_defaults: Dict[str, bool]) -> None:
     """Initialize which argument to show as the default in flag-type arguments."""
     argument_defaults["axis-modal"] = False
     argument_defaults["bcnc"] = False
@@ -77,7 +88,7 @@ def init_argument_defaults(argument_defaults):
     argument_defaults["translate_drill"] = False
 
 
-def init_arguments_visible(arguments_visible):
+def init_arguments_visible(arguments_visible: Dict[str, bool]) -> None:
     """Initialize the flags for which arguments are visible in the arguments tooltip."""
     arguments_visible["bcnc"] = False
     arguments_visible["axis-modal"] = True
@@ -101,8 +112,16 @@ def init_arguments_visible(arguments_visible):
     arguments_visible["wait-for-spindle"] = False
 
 
-def init_shared_arguments(values, argument_defaults, arguments_visible):
+def init_shared_arguments(
+    values: Values,
+    argument_defaults: Dict[str, bool],
+    arguments_visible: Dict[str, bool],
+) -> Parser:
     """Initialize the arguments for postprocessors."""
+    help_message: str
+    parser: Parser
+    shared: ParserArgumentGroup
+
     parser = argparse.ArgumentParser(
         prog=values["MACHINE_NAME"], usage=argparse.SUPPRESS, add_help=False
     )
@@ -287,113 +306,114 @@ def init_shared_arguments(values, argument_defaults, arguments_visible):
     return parser
 
 
-def init_shared_values(values):
+def init_shared_values(values: Values):
     """Initialize the default values in postprocessors."""
     #
     # The starting axis precision is 3 digits after the decimal point.
     #
-    values["AXIS_PRECISION"] = 3
+    values["AXIS_PRECISION"]: int = 3
     #
     # How far to move up (in millimeters) in the Z axis when chipbreaking
     # with a G73 command.
     # How far to move up (in millimeters) in the Z axis when chipbreaking
     # with a G73 command.
     #
-    values["CHIPBREAKING_AMOUNT"] = Units.Quantity(0.25, Units.Length)
+    values["CHIPBREAKING_AMOUNT"]: float = Units.Quantity(0.25, Units.Length)
+
     #
     # If this is set to "", all spaces are removed from between commands and parameters.
     #
-    values["COMMAND_SPACE"] = " "
+    values["COMMAND_SPACE"]: str = " "
     #
     # The character that indicates a comment.  While "(" is the most common,
     # ";" is also used.
     #
-    values["COMMENT_SYMBOL"] = "("
+    values["COMMENT_SYMBOL"]: str = "("
     #
     # Variables storing the current position for the drill_translate routine.
     #
-    values["CURRENT_X"] = 0
-    values["CURRENT_Y"] = 0
-    values["CURRENT_Z"] = 0
+    values["CURRENT_X"]: float = 0.0
+    values["CURRENT_Y"]: float = 0.0
+    values["CURRENT_Z"]: float = 0.0
     #
     # Default axis precision for metric is 3 digits after the decimal point.
     # (see http://linuxcnc.org/docs/2.7/html/gcode/overview.html#_g_code_best_practices)
     #
-    values["DEFAULT_AXIS_PRECISION"] = 3
+    values["DEFAULT_AXIS_PRECISION"]: int = 3
     #
     # The default precision for feed is also set to 3 for metric.
     #
-    values["DEFAULT_FEED_PRECISION"] = 3
+    values["DEFAULT_FEED_PRECISION"]: int = 3
     #
     # Default axis precision for inch/imperial is 4 digits after the decimal point.
     #
-    values["DEFAULT_INCH_AXIS_PRECISION"] = 4
+    values["DEFAULT_INCH_AXIS_PRECISION"]: int = 4
     #
     # The default precision for feed is also set to 4 for inch/imperial.
     #
-    values["DEFAULT_INCH_FEED_PRECISION"] = 4
+    values["DEFAULT_INCH_FEED_PRECISION"]: int = 4
     #
     # If TRANSLATE_DRILL_CYCLES is True, these are the drill cycles
     # that get translated to G0 and G1 commands.
     #
-    values["DRILL_CYCLES_TO_TRANSLATE"] = ["G73", "G81", "G82", "G83"]
+    values["DRILL_CYCLES_TO_TRANSLATE"]: List[str] = ["G73", "G81", "G82", "G83"]
     #
     # The default value of drill retractations (CURRENT_Z).
     # The other possible value is G99.
     #
-    values["DRILL_RETRACT_MODE"] = "G98"
+    values["DRILL_RETRACT_MODE"]: str = "G98"
     #
     # If this is set to True, then M7, M8, and M9 commands
     # to enable/disable coolant will be output.
     #
-    values["ENABLE_COOLANT"] = False
+    values["ENABLE_COOLANT"]: bool = False
     #
     # If this is set to True, then commands that are placed in
     # comments that look like (MC_RUN_COMMAND: blah) will be output.
     #
-    values["ENABLE_MACHINE_SPECIFIC_COMMANDS"] = False
+    values["ENABLE_MACHINE_SPECIFIC_COMMANDS"]: bool = False
     #
     # By default the line ending characters of the output file(s)
     # are written to match the system that the postprocessor runs on.
     # If you need to force the line ending characters to a specific
     # value, set this variable to "\n" or "\r\n" instead.
     #
-    values["END_OF_LINE_CHARACTERS"] = os.linesep
+    values["END_OF_LINE_CHARACTERS"]: str = os.linesep
     #
     # The starting precision for feed is also set to 3 digits after the decimal point.
     #
-    values["FEED_PRECISION"] = 3
+    values["FEED_PRECISION"]: int = 3
     #
     # This value shows up in the post_op comment as "Finish operation:".
     # At least one postprocessor changes it to "End" to produce "End operation:".
     #
-    values["FINISH_LABEL"] = "Finish"
+    values["FINISH_LABEL"]: str = "Finish"
     #
     # The line number increment value
     #
-    values["LINE_INCREMENT"] = 10
+    values["LINE_INCREMENT"]: int = 10
     #
     # The line number starting value
     #
-    values["line_number"] = 100
+    values["line_number"]: int = 100
     #
     # If this value is True, then a list of tool numbers
     # with their labels are output just before the preamble.
     #
-    values["LIST_TOOLS_IN_PREAMBLE"] = False
+    values["LIST_TOOLS_IN_PREAMBLE"]: bool = False
     #
     # The name of the machine the postprocessor is for
     #
-    values["MACHINE_NAME"] = "unknown machine"
+    values["MACHINE_NAME"]: str = "unknown machine"
     #
     # If this value is true G-code commands are suppressed if they are
     # the same as the previous line.
     #
-    values["MODAL"] = False
+    values["MODAL"]: bool = False
     #
     # This defines the motion commands that might change the X, Y, and Z position.
     #
-    values["MOTION_COMMANDS"] = [
+    values["MOTION_COMMANDS"]: List[str] = [
         "G0",
         "G00",
         "G1",
@@ -407,28 +427,28 @@ def init_shared_values(values):
     # Keeps track of the motion mode currently in use.
     # G90 for absolute moves, G91 for relative
     #
-    values["MOTION_MODE"] = "G90"
+    values["MOTION_MODE"]: str = "G90"
     #
     # If True enables special processing for operations with "Adaptive" in the name
     #
-    values["OUTPUT_ADAPTIVE"] = False
+    values["OUTPUT_ADAPTIVE"]: bool = False
     #
     # If True adds bCNC operation block headers to the output G-code file.
     #
-    values["OUTPUT_BCNC"] = False
+    values["OUTPUT_BCNC"]: bool = False
     #
     # If True output comments.  If False comments are suppressed.
     #
-    values["OUTPUT_COMMENTS"] = True
+    values["OUTPUT_COMMENTS"]: bool = True
     #
     # if False duplicate axis values or feeds are suppressed
     # if they are the same as the previous line.
     #
-    values["OUTPUT_DOUBLES"] = True
+    values["OUTPUT_DOUBLES"]: bool = True
     #
     # If True output the machine name in the pre_op
     #
-    values["OUTPUT_MACHINE_NAME"] = False
+    values["OUTPUT_MACHINE_NAME"]: bool = False
     #
     # If True output a header at the front of the G-code file.
     # The header contains comments similar to:
@@ -437,23 +457,23 @@ def init_shared_values(values):
     #   (Cam File: box.fcstd)
     #   (Output Time:2020-01-01 01:02:03.123456)
     #
-    values["OUTPUT_HEADER"] = True
+    values["OUTPUT_HEADER"]: bool = True
     #
     # If True output line numbers at the front of each line.
     # If False do not output line numbers.
     #
-    values["OUTPUT_LINE_NUMBERS"] = False
+    values["OUTPUT_LINE_NUMBERS"]: bool = False
     #
     # If True output Path labels at the beginning of each Path.
     #
-    values["OUTPUT_PATH_LABELS"] = False
+    values["OUTPUT_PATH_LABELS"]: bool = False
     #
     # If True output tool change G-code for M6 commands followed
     # by any commands in the "TOOL_CHANGE" value.
     # If False output the M6 command as a comment and do not output
     # any commands in the "TOOL_CHANGE" value.
     #
-    values["OUTPUT_TOOL_CHANGE"] = True
+    values["OUTPUT_TOOL_CHANGE"]: bool = True
     #
     # This dictionary/hash holds the functions that are used
     # to process the G-code parameter values
@@ -463,7 +483,7 @@ def init_shared_values(values):
     #
     # This list controls the order of parameters in a line during output.
     #
-    values["PARAMETER_ORDER"] = [
+    values["PARAMETER_ORDER"]: List[str] = [
         "D",
         "H",
         "L",
@@ -491,96 +511,106 @@ def init_shared_values(values):
     # Any commands in this value will be output as the last commands
     # in the G-code file.
     #
-    values["POSTAMBLE"] = """"""
+    values["POSTAMBLE"]: str = """"""
     #
     # Any commands in this value will be output after the operation(s).
     #
-    values["POST_OPERATION"] = """"""
+    values["POST_OPERATION"]: str = """"""
     #
     # Any commands in this value will be output after the header and
     # safety block at the beginning of the G-code file.
     #
-    values["PREAMBLE"] = """"""
+    values["PREAMBLE"]: str = """"""
     #
     # Any commands in this value will be output before the operation(s).
     #
-    values["PRE_OPERATION"] = """"""
+    values["PRE_OPERATION"]: str = """"""
     #
     # Defines which G-code commands are considered "rapid" moves.
     #
-    values["RAPID_MOVES"] = ["G0", "G00"]
+    values["RAPID_MOVES"]: List[str] = ["G0", "G00"]
     #
     # Any commands in this value are output after the operation(s)
     # and post_operation commands are output but before the
     # TOOLRETURN, SAFETYBLOCK, and POSTAMBLE.
     #
-    values["RETURN_TO"] = None
+    values["RETURN_TO"]: bool = None
     #
     # Any commands in this value are output after the header but before the preamble,
     # then again after the TOOLRETURN but before the POSTAMBLE.
     #
-    values["SAFETYBLOCK"] = """"""
+    values["SAFETYBLOCK"]: str = """"""
     #
     # If True then the G-code editor widget is shown before writing
     # the G-code to the file.
     #
-    values["SHOW_EDITOR"] = True
+    values["SHOW_EDITOR"]: bool = True
     #
     # If True then the current machine units are output just before the PRE_OPERATION.
     #
-    values["SHOW_MACHINE_UNITS"] = True
+    values["SHOW_MACHINE_UNITS"]: bool = True
     #
     # If True then the current operation label is output just before the PRE_OPERATION.
     #
-    values["SHOW_OPERATION_LABELS"] = True
+    values["SHOW_OPERATION_LABELS"]: bool = True
     #
     # The number of decimal places to use when outputting the speed (S) parameter.
     #
-    values["SPINDLE_DECIMALS"] = 0
+    values["SPINDLE_DECIMALS"]: int = 0
     #
     # The amount of time (in seconds) to wait after turning on the spindle
     # using an M3 or M4 command (a floating point number).
     #
-    values["SPINDLE_WAIT"] = 0.0
+    values["SPINDLE_WAIT"]: float = 0.0
     #
     # If true then then an M5 command to stop the spindle is output
     # after the M6 tool change command and before the TOOL_CHANGE commands.
     #
-    values["STOP_SPINDLE_FOR_TOOL_CHANGE"] = True
+    values["STOP_SPINDLE_FOR_TOOL_CHANGE"]: bool = True
     #
     # These commands are ignored by commenting them out.
     # Used when replacing the drill commands by G0 and G1 commands, for example.
     #
-    values["SUPPRESS_COMMANDS"] = []
+    values["SUPPRESS_COMMANDS"]: List[str] = []
     #
     # Any commands in this value are output after the M6 command
     # when changing at tool (if OUTPUT_TOOL_CHANGE is True).
     #
-    values["TOOL_CHANGE"] = """"""
+    values["TOOL_CHANGE"]: str = """"""
     #
     # Any commands in this value are output after the POST_OPERATION,
     # RETURN_TO, and OUTPUT_BCNC and before the SAFETYBLOCK and POSTAMBLE.
     #
-    values["TOOLRETURN"] = """"""
+    values["TOOLRETURN"]: str = """"""
     #
     # If true, G81, G82 & G83 drill moves are translated into G0/G1 moves.
     #
-    values["TRANSLATE_DRILL_CYCLES"] = False
+    values["TRANSLATE_DRILL_CYCLES"]: bool = False
     #
     # These values keep track of whether we are in Metric mode (G21)
     # or inches/imperial mode (G20).
     #
-    values["UNITS"] = "G21"
-    values["UNIT_FORMAT"] = "mm"
-    values["UNIT_SPEED_FORMAT"] = "mm/min"
+    values["UNITS"]: str = "G21"
+    values["UNIT_FORMAT"]: str = "mm"
+    values["UNIT_SPEED_FORMAT"]: str = "mm/min"
     #
     # If true a tool length command (G43) will be output following tool changes.
     #
-    values["USE_TLO"] = True
+    values["USE_TLO"]: bool = True
 
 
-def process_shared_arguments(values, parser, argstring, all_visible, filename):
+def process_shared_arguments(
+    values: Values,
+    parser: Parser,
+    argstring: str,
+    all_visible: Parser,
+    filename: str,
+) -> Tuple[bool, Union[str, ParserArgs]]:
     """Process the arguments to the postprocessor."""
+    args: ParserArgs
+    argument_text: str
+    v: str
+
     try:
         args = parser.parse_args(shlex.split(argstring))
         if args.output_all_arguments:
