@@ -23,16 +23,15 @@
 # ***************************************************************************
 
 
-from typing import Any, Dict, List, Union
+import argparse
+
+from typing import Any, Dict, Union
 
 import Path.Post.UtilsArguments as UtilsArguments
 import Path.Post.UtilsExport as UtilsExport
 
 # Define some types that are used throughout this file
-PathObject = object
-ObjectsList = List[PathObject]
-Parser = object
-ParserArgs = object
+Parser = argparse.ArgumentParser
 Values = Dict[str, Any]
 
 #
@@ -196,13 +195,11 @@ global_all_visible = init_arguments(
 )
 
 
-def export(objectslist: ObjectsList, filename: str, argstring: str) -> str:
+def export(objectslist, filename: str, argstring: str) -> Union[str, None]:
     """Postprocess the objects in objectslist to filename."""
-    #
-    global global_all_visible
-    global global_parser
+    flag: bool
+
     global UNITS
-    global global_values
 
     # print(parser.format_help())
 

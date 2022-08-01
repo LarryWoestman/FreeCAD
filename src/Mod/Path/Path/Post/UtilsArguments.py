@@ -33,7 +33,7 @@ These are functions related to arguments and values for creating custom post pro
 import argparse
 import os
 import shlex
-from typing import Any, Callable, Dict, Tuple, Union
+from typing import Any, Callable, Dict
 
 from FreeCAD import Units
 
@@ -43,15 +43,13 @@ from Path.Post import UtilsParse
 PathParameter = float
 PathParameters = Dict[str, PathParameter]
 Parser = argparse.ArgumentParser
-ParserArgs = object
-ParserArgumentGroup = argparse.ArgumentParser
 Values = Dict[str, Any]
 
 ParameterFunction = Callable[[Values, str, str, PathParameter, PathParameters], str]
 
 
 def add_flag_type_arguments(
-    argument_group: ParserArgumentGroup,
+    argument_group,
     default_flag: bool,
     true_argument: str,
     false_argument: str,
@@ -120,7 +118,6 @@ def init_shared_arguments(
     """Initialize the arguments for postprocessors."""
     help_message: str
     parser: Parser
-    shared: ParserArgumentGroup
 
     parser = argparse.ArgumentParser(
         prog=values["MACHINE_NAME"], usage=argparse.SUPPRESS, add_help=False
@@ -605,9 +602,8 @@ def process_shared_arguments(
     argstring: str,
     all_visible: Parser,
     filename: str,
-) -> Tuple[bool, Union[str, ParserArgs]]:
+):
     """Process the arguments to the postprocessor."""
-    args: ParserArgs
     argument_text: str
     v: str
 
