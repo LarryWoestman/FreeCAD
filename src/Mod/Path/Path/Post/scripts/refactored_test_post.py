@@ -135,7 +135,7 @@ def init_argument_defaults(argument_defaults: Dict[str, bool]) -> None:
 
 def init_arguments_visible(arguments_visible: Dict[str, bool]) -> None:
     """Initialize which argument pairs are visible in TOOLTIP_ARGS."""
-    k: str
+    key: str
 
     UtilsArguments.init_arguments_visible(arguments_visible)
     #
@@ -144,8 +144,8 @@ def init_arguments_visible(arguments_visible: Dict[str, bool]) -> None:
     #
     # Make all arguments invisible by default.
     #
-    for k in iter(arguments_visible):
-        arguments_visible[k] = False
+    for key in iter(arguments_visible):
+        arguments_visible[key] = False
 
 
 def init_arguments(
@@ -170,27 +170,28 @@ def init_arguments(
 # Creating global variables and using functions to modify them
 # is useful for being able to test things later.
 #
-global_values = {}
+global_values: Values = {}
 init_values(global_values)
-global_argument_defaults = {}
+global_argument_defaults: Dict[str, bool] = {}
 init_argument_defaults(global_argument_defaults)
-global_arguments_visible = {}
+global_arguments_visible: Dict[str, bool] = {}
 init_arguments_visible(global_arguments_visible)
-global_parser = init_arguments(
+global_parser: Parser = init_arguments(
     global_values, global_argument_defaults, global_arguments_visible
 )
 #
 # The TOOLTIP_ARGS value is created from the help information about the arguments.
 #
-TOOLTIP_ARGS = global_parser.format_help()
+TOOLTIP_ARGS: str = global_parser.format_help()
 #
 # Create another parser just to get a list of all possible arguments
 # that may be output using --output_all_arguments.
 #
-global_all_arguments_visible = {}
-for global_k in iter(global_arguments_visible):
-    global_all_arguments_visible[global_k] = True
-global_all_visible = init_arguments(
+global_all_arguments_visible: Dict[str, bool] = {}
+k: str
+for k in iter(global_arguments_visible):
+    global_all_arguments_visible[k] = True
+global_all_visible: Parser = init_arguments(
     global_values, global_argument_defaults, global_all_arguments_visible
 )
 
@@ -199,7 +200,7 @@ def export(objectslist, filename: str, argstring: str) -> Union[str, None]:
     """Postprocess the objects in objectslist to filename."""
     flag: bool
 
-    global UNITS
+    global UNITS  # pylint:  disable=global-statement
 
     # print(parser.format_help())
 
