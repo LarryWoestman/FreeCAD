@@ -196,11 +196,12 @@ global_all_visible: Parser = init_arguments(
 )
 
 
-def export(objectslist, filename: str, argstring: str) -> Union[str, None]:
+def export(objectslist, filename: str, argstring: str) -> str:
     """Postprocess the objects in objectslist to filename."""
+    args: Union[str, argparse.Namespace]
     flag: bool
 
-    global UNITS  # pylint:  disable=global-statement
+    global UNITS  # pylint: disable=global-statement
 
     # print(parser.format_help())
 
@@ -208,7 +209,7 @@ def export(objectslist, filename: str, argstring: str) -> Union[str, None]:
         global_values, global_parser, argstring, global_all_visible, filename
     )
     if not flag:
-        return args
+        return args  # type: ignore
     #
     # Process any additional arguments here
     #
