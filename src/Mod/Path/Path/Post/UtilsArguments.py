@@ -88,9 +88,10 @@ def init_argument_defaults(argument_defaults: Dict[str, bool]) -> None:
 
 def init_arguments_visible(arguments_visible: Dict[str, bool]) -> None:
     """Initialize the flags for which arguments are visible in the arguments tooltip."""
-    arguments_visible["bcnc"] = False
     arguments_visible["axis-modal"] = True
     arguments_visible["axis-precision"] = True
+    arguments_visible["bcnc"] = False
+    arguments_visible["chipbreaking_amount"] = False
     arguments_visible["comments"] = True
     arguments_visible["feed-precision"] = True
     arguments_visible["header"] = True
@@ -144,7 +145,7 @@ def init_shared_arguments(
     )
     if arguments_visible["axis-precision"]:
         help_message = (
-            f"Number of digits of precision for axis moves, "
+            "Number of digits of precision for axis moves, "
             f'default is {str(values["DEFAULT_AXIS_PRECISION"])}'
         )
     else:
@@ -166,6 +167,17 @@ def init_shared_arguments(
         ),
         "Suppress bCNC block header output",
         arguments_visible["bcnc"],
+    )
+    if arguments_visible["chipbreaking_amount"]:
+        help_message = (
+            "Amount to move for chipbreaking in a translated G73 command, "
+            f'default is {str(values["CHIPBREAKING_AMOUNT"])}'
+        )
+    else:
+        help_message = argparse.SUPPRESS
+    shared.add_argument(
+        "--chipbreaking_amount",
+        help=help_message,
     )
     add_flag_type_arguments(
         shared,
@@ -688,6 +700,8 @@ def process_shared_arguments(
             values["OUTPUT_BCNC"] = True
         if args.no_bcnc:
             values["OUTPUT_BCNC"] = False
+        if args.chipbreaking_amount:
+            values["CHIPBREAKING_AMOUNT"] = Units.parseQuantity(args.chipbreaking_amount)
         if args.comments:
             values["OUTPUT_COMMENTS"] = True
         if args.no_comments:
