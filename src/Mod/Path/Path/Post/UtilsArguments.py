@@ -75,6 +75,7 @@ def init_argument_defaults(argument_defaults: Dict[str, bool]) -> None:
     argument_defaults["bcnc"] = False
     argument_defaults["comments"] = True
     argument_defaults["enable_coolant"] = False
+    argument_defaults["enable_machine_specific_commands"] = False
     argument_defaults["header"] = True
     argument_defaults["line-numbers"] = False
     argument_defaults["metric_inches"] = True
@@ -97,6 +98,7 @@ def init_arguments_visible(arguments_visible: Dict[str, bool]) -> None:
     arguments_visible["comments"] = True
     arguments_visible["comment_symbol"] = False
     arguments_visible["enable_coolant"] = False
+    arguments_visible["enable_machine_specific_commands"] = False
     arguments_visible["feed-precision"] = True
     arguments_visible["header"] = True
     arguments_visible["line-numbers"] = True
@@ -223,6 +225,15 @@ def init_shared_arguments(
         "Enable coolant",
         "Disable coolant",
         arguments_visible["enable_coolant"],
+    )
+    add_flag_type_arguments(
+        shared,
+        argument_defaults["enable_machine_specific_commands"],
+        "--enable_machine_specific_commands",
+        "--disable_machine_specific_commands",
+        "Enable machine specific commands of the form (MC_RUN_COMMAND: blah)",
+        "Disable machine specific commands",
+        arguments_visible["enable_machine_specific_commands"],
     )
     if arguments_visible["feed-precision"]:
         help_message = (
@@ -749,6 +760,10 @@ def process_shared_arguments(
             values["ENABLE_COOLANT"] = True
         if args.disable_coolant:
             values["ENABLE_COOLANT"] = False
+        if args.enable_machine_specific_commands:
+            values["ENABLE_MACHINE_SPECIFIC_COMMANDS"] = True
+        if args.disable_machine_specific_commands:
+            values["ENABLE_MACHINE_SPECIFIC_COMMANDS"] = False
         if args.header:
             values["OUTPUT_HEADER"] = True
         if args.no_header:
@@ -816,7 +831,7 @@ def process_shared_arguments(
 #
 # G53 G00|G01 or G00|G01 G53  X Y Z
 #
-# G73, G74, G81 to G86, G89   "X Y Z" | "U V W" R Q L P F K $
+# G73, G74, G81 to G86, G89   "X Y Z"|"U V W" R Q L P F K $
 #
 # G76                         P Z I J R K Q H E L $
 #
