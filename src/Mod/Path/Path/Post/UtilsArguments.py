@@ -99,6 +99,7 @@ def init_arguments_visible(arguments_visible: Dict[str, bool]) -> None:
     arguments_visible["comment_symbol"] = False
     arguments_visible["enable_coolant"] = False
     arguments_visible["enable_machine_specific_commands"] = False
+    arguments_visible["end_of_line_characters"] = False
     arguments_visible["feed-precision"] = True
     arguments_visible["header"] = True
     arguments_visible["line-numbers"] = True
@@ -234,6 +235,17 @@ def init_shared_arguments(
         "Enable machine specific commands of the form (MC_RUN_COMMAND: blah)",
         "Disable machine specific commands",
         arguments_visible["enable_machine_specific_commands"],
+    )
+    if arguments_visible["end_of_line_characters"]:
+        help_message = (
+            "The character(s) to use at the end of each line in the output file, "
+            "default is whatever the system uses, may also use '\\n' or '\\r\\n'"
+        )
+    else:
+        help_message = argparse.SUPPRESS
+    shared.add_argument(
+        "--end_of_line_characters",
+        help=help_message,
     )
     if arguments_visible["feed-precision"]:
         help_message = (
@@ -764,6 +776,8 @@ def process_shared_arguments(
             values["ENABLE_MACHINE_SPECIFIC_COMMANDS"] = True
         if args.disable_machine_specific_commands:
             values["ENABLE_MACHINE_SPECIFIC_COMMANDS"] = False
+        if args.end_of_line_characters:
+            values["END_OF_LINE_CHARACTERS"] = args.end_of_line_characters
         if args.header:
             values["OUTPUT_HEADER"] = True
         if args.no_header:
