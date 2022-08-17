@@ -104,6 +104,7 @@ def init_arguments_visible(arguments_visible: Dict[str, bool]) -> None:
     arguments_visible["feed-precision"] = True
     arguments_visible["header"] = True
     arguments_visible["line_number_increment"] = False
+    arguments_visible["line_number_start"] = False
     arguments_visible["line-numbers"] = True
     arguments_visible["metric_inches"] = True
     arguments_visible["modal"] = True
@@ -291,6 +292,19 @@ def init_shared_arguments(
         help_message = argparse.SUPPRESS
     shared.add_argument(
         "--line_number_increment",
+        default=-1,
+        type=int,
+        help=help_message,
+    )
+    if arguments_visible["line_number_start"]:
+        help_message = (
+            f"The number the line numbers start at, "
+            f'default is {str(values["line_number"])}'
+        )
+    else:
+        help_message = argparse.SUPPRESS
+    shared.add_argument(
+        "--line_number_start",
         default=-1,
         type=int,
         help=help_message,
@@ -810,10 +824,12 @@ def process_shared_arguments(
             values["OUTPUT_HEADER"] = True
         if args.no_header:
             values["OUTPUT_HEADER"] = False
-        if args.line_numbers:
-            values["OUTPUT_LINE_NUMBERS"] = True
         if args.line_number_increment != -1:
             values["LINE_INCREMENT"] = args.line_number_increment
+        if args.line_number_start != -1:
+            values["line_number"] = args.line_number_start
+        if args.line_numbers:
+            values["OUTPUT_LINE_NUMBERS"] = True
         if args.no_line_numbers:
             values["OUTPUT_LINE_NUMBERS"] = False
         if args.modal:
