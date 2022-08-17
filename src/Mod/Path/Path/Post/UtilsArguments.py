@@ -103,6 +103,7 @@ def init_arguments_visible(arguments_visible: Dict[str, bool]) -> None:
     arguments_visible["finish_label"] = False
     arguments_visible["feed-precision"] = True
     arguments_visible["header"] = True
+    arguments_visible["line_number_increment"] = False
     arguments_visible["line-numbers"] = True
     arguments_visible["metric_inches"] = True
     arguments_visible["modal"] = True
@@ -280,6 +281,19 @@ def init_shared_arguments(
         "Output headers",
         "Suppress header output",
         arguments_visible["header"],
+    )
+    if arguments_visible["line_number_increment"]:
+        help_message = (
+            f"Amount to increment the line numbers, "
+            f'default is {str(values["LINE_INCREMENT"])}'
+        )
+    else:
+        help_message = argparse.SUPPRESS
+    shared.add_argument(
+        "--line_number_increment",
+        default=-1,
+        type=int,
+        help=help_message,
     )
     add_flag_type_arguments(
         shared,
@@ -798,6 +812,8 @@ def process_shared_arguments(
             values["OUTPUT_HEADER"] = False
         if args.line_numbers:
             values["OUTPUT_LINE_NUMBERS"] = True
+        if args.line_number_increment != -1:
+            values["LINE_INCREMENT"] = args.line_number_increment
         if args.no_line_numbers:
             values["OUTPUT_LINE_NUMBERS"] = False
         if args.modal:
