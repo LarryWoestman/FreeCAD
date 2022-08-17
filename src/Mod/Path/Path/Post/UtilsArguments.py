@@ -100,6 +100,7 @@ def init_arguments_visible(arguments_visible: Dict[str, bool]) -> None:
     arguments_visible["enable_coolant"] = False
     arguments_visible["enable_machine_specific_commands"] = False
     arguments_visible["end_of_line_characters"] = False
+    arguments_visible["finish_label"] = False
     arguments_visible["feed-precision"] = True
     arguments_visible["header"] = True
     arguments_visible["line-numbers"] = True
@@ -258,6 +259,17 @@ def init_shared_arguments(
         "--feed-precision",
         default=-1,
         type=int,
+        help=help_message,
+    )
+    if arguments_visible["finish_label"]:
+        help_message = (
+            "The characters to use in the 'Finish operation' comment, "
+            f'default is "{values["FINISH_LABEL"]}"'
+        )
+    else:
+        help_message = argparse.SUPPRESS
+    shared.add_argument(
+        "--finish_label",
         help=help_message,
     )
     add_flag_type_arguments(
@@ -778,6 +790,8 @@ def process_shared_arguments(
             values["ENABLE_MACHINE_SPECIFIC_COMMANDS"] = False
         if args.end_of_line_characters:
             values["END_OF_LINE_CHARACTERS"] = args.end_of_line_characters
+        if args.finish_label:
+            values["FINISH_LABEL"] = args.finish_label
         if args.header:
             values["OUTPUT_HEADER"] = True
         if args.no_header:
