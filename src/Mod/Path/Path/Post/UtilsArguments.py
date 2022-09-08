@@ -78,9 +78,13 @@ def init_argument_defaults(argument_defaults: Dict[str, bool]) -> None:
     argument_defaults["enable_machine_specific_commands"] = False
     argument_defaults["header"] = True
     argument_defaults["line-numbers"] = False
+    argument_defaults["list_tools_in_preamble"] = False
     argument_defaults["metric_inches"] = True
     argument_defaults["modal"] = False
+    argument_defaults["output_adaptive"] = False
     argument_defaults["output_all_arguments"] = False
+    argument_defaults["output_machine_name"] = False
+    argument_defaults["output_path_labels"] = False
     argument_defaults["output_visible_arguments"] = False
     argument_defaults["show-editor"] = True
     argument_defaults["tlo"] = True
@@ -106,11 +110,16 @@ def init_arguments_visible(arguments_visible: Dict[str, bool]) -> None:
     arguments_visible["line_number_increment"] = False
     arguments_visible["line_number_start"] = False
     arguments_visible["line-numbers"] = True
+    arguments_visible["list_tools_in_preamble"] = False
     arguments_visible["metric_inches"] = True
     arguments_visible["modal"] = True
+    arguments_visible["output_adaptive"] = False
     arguments_visible["output_all_arguments"] = True
+    arguments_visible["output_machine_name"] = False
+    arguments_visible["output_path_labels"] = False
     arguments_visible["output_visible_arguments"] = True
     arguments_visible["postamble"] = True
+    arguments_visible["post_operation"] = False
     arguments_visible["preamble"] = True
     arguments_visible["precision"] = True
     arguments_visible["return-to"] = False
@@ -320,6 +329,15 @@ def init_shared_arguments(
     )
     add_flag_type_arguments(
         shared,
+        argument_defaults["list_tools_in_preamble"],
+        "--list_tools_in_preamble",
+        "--no-list_tools_in_preamble",
+        "List the tools used in the operation in the preamble",
+        "Don't list the tools used in the operation",
+        arguments_visible["header"],
+    )
+    add_flag_type_arguments(
+        shared,
         argument_defaults["modal"],
         "--modal",
         "--no-modal",
@@ -329,12 +347,39 @@ def init_shared_arguments(
     )
     add_flag_type_arguments(
         shared,
+        argument_defaults["output_adaptive"],
+        "--output_adaptive",
+        "--no-output_adaptive",
+        "Enables special processing for operations with 'Adaptive' in the name",
+        "Disables special processing for operations with 'Adaptive' in the name",
+        arguments_visible["output_adaptive"],
+    )
+    add_flag_type_arguments(
+        shared,
         argument_defaults["output_all_arguments"],
         "--output_all_arguments",
         "--no-output_all_arguments",
         "Output all of the available arguments",
         "Don't output all of the available arguments",
         arguments_visible["output_all_arguments"],
+    )
+    add_flag_type_arguments(
+        shared,
+        argument_defaults["output_machine_name"],
+        "--output_machine_name",
+        "--no-output_machine_name",
+        "Output the machine name in the pre-operation information",
+        "Don't output the machine name in the pre-operation information",
+        arguments_visible["output_adaptive"],
+    )
+    add_flag_type_arguments(
+        shared,
+        argument_defaults["output_path_labels"],
+        "--output_path_labels",
+        "--no-output_path_labels",
+        "Output Path labels at the beginning of each Path",
+        "Don't output Path labels at the beginning of each Path",
+        arguments_visible["output_path_labels"],
     )
     add_flag_type_arguments(
         shared,
@@ -353,6 +398,14 @@ def init_shared_arguments(
     else:
         help_message = argparse.SUPPRESS
     shared.add_argument("--postamble", help=help_message)
+    if arguments_visible["post_operation"]:
+        help_message = (
+            f"Set commands to be issued after every operation, "
+            f'default is "{values["POST_OPERATION"]}"'
+        )
+    else:
+        help_message = argparse.SUPPRESS
+    shared.add_argument("--post_operation", help=help_message)
     if arguments_visible["preamble"]:
         help_message = (
             f"Set commands to be issued before the first command, "
@@ -832,12 +885,30 @@ def process_shared_arguments(
             values["OUTPUT_LINE_NUMBERS"] = True
         if args.no_line_numbers:
             values["OUTPUT_LINE_NUMBERS"] = False
+        if args.list_tools_in_preamble:
+            values["LIST_TOOLS_IN_PREAMBLE"] = True
+        if args.no_list_tools_in_preamble:
+            values["LIST_TOOLS_IN_PREAMBLE"] = False
         if args.modal:
             values["MODAL"] = True
         if args.no_modal:
             values["MODAL"] = False
+        if args.output_adaptive:
+            values["OUTPUT_ADAPTIVE"] = True
+        if args.no_output_adaptive:
+            values["OUTPUT_ADAPTIVE"] = False
+        if args.output_machine_name:
+            values["OUTPUT_MACHINE_NAME"] = True
+        if args.no_output_machine_name:
+            values["OUTPUT_MACHINE_NAME"] = False
+        if args.output_path_labels:
+            values["OUTPUT_PATH_LABELS"] = True
+        if args.no_output_path_labels:
+            values["OUTPUT_PATH_LABELS"] = False
         if args.postamble is not None:
             values["POSTAMBLE"] = args.postamble
+        if args.post_operation is not None:
+            values["POST_OPERATION"] = args.post_operation
         if args.preamble is not None:
             values["PREAMBLE"] = args.preamble
         if args.return_to != "":
