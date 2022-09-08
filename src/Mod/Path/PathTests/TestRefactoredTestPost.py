@@ -775,6 +775,108 @@ G21
     def test00150(self) -> None:
         """Test output with an empty path.
 
+    def test00138(self) -> None:
+        """Test end of line characters."""
+        args: str
+        expected: bytes
+        gcode_bytes: bytes
+
+        self.docobj.Path = Path.Path([])
+        postables = [self.docobj]
+
+        # Test with whatever the system running the test happens to use
+        expected = b"G90" + os.linesep.encode() + b"G21" + os.linesep.encode()
+        args = ""
+        _ = postprocessor.export(postables, "gcode.tmp", args)
+        with open("gcode.tmp", mode="rb") as bfile:
+            gcode_bytes = bfile.read()
+        self.assertEqual(gcode_bytes, expected)
+
+        # Test with a new line
+        expected = b"G90\nG21\n"
+        args = "--end_of_line_characters='\n'"
+        _ = postprocessor.export(postables, "gcode.tmp", args)
+        with open("gcode.tmp", mode="rb") as bfile:
+            gcode_bytes = bfile.read()
+        self.assertEqual(gcode_bytes, expected)
+
+        # Test with a carriage return followed by a new line
+        expected = b"G90\r\nG21\r\n"
+        args = "--end_of_line_characters='\r\n'"
+        _ = postprocessor.export(postables, "gcode.tmp", args)
+        with open("gcode.tmp", mode="rb") as bfile:
+            gcode_bytes = bfile.read()
+        self.assertEqual(gcode_bytes, expected)
+
+        # Test with a carriage return
+        expected = b"G90\rG21\r"
+        args = "--end_of_line_characters='\r'"
+        _ = postprocessor.export(postables, "gcode.tmp", args)
+        with open("gcode.tmp", mode="rb") as bfile:
+            gcode_bytes = bfile.read()
+        self.assertEqual(gcode_bytes, expected)
+
+    #############################################################################
+
+    def test00140(self) -> None:
+        """Test feed-precision."""
+        args: str
+        gcode: str
+
+        c = Path.Command("G1 X10 Y20 Z30 F123.123456")
+
+        self.docobj.Path = Path.Path([c])
+        postables = [self.docobj]
+
+        args = ""
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        # Note:  The "internal" F speed is in mm/s,
+        #        while the output F speed is in mm/min.
+        self.assertEqual(gcode.splitlines()[2], "G1 X10.000 Y20.000 Z30.000 F7387.407")
+
+        args = "--feed-precision=2"
+        gcode = postprocessor.export(postables, "gcode.tmp", args)
+        # print("--------\n" + gcode + "--------\n")
+        # Note:  The "internal" F speed is in mm/s,
+        #        while the output F speed is in mm/min.
+        self.assertEqual(gcode.splitlines()[2], "G1 X10.000 Y20.000 Z30.000 F7387.41")
+
+    #############################################################################
+
+    def test00145(self) -> None:
+        """Test the finish label argument."""
+        # test the default finish label
+        self.single_compare(
+            [],
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(Finish operation: testpath)
+(Begin postamble)
+""",
+            "--comments",
+        )
+
+        # test a changed finish label
+        self.single_compare(
+            [],
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+(End operation: testpath)
+(Begin postamble)
+""",
+            "--finish_label='End' --comments",
+        )
+
+    #############################################################################
+
+    def test00150(self) -> None:
+        """Test output with an empty path.
+
         Also tests the interactions between --comments and --header.
         """
         args: str
