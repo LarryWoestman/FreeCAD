@@ -28,10 +28,10 @@ import FreeCAD
 
 import Path
 
-from PathScripts import PathLog
-from PathScripts import PathToolBit
-from PathScripts import PathToolController
-from PathScripts.post import refactored_test_post as postprocessor
+from Path import Log
+from Path.Tool import Bit
+from Path.Tool import Controller
+from Path.Post.scripts import refactored_test_post as postprocessor
 from PathTests import PathTestUtils
 
 from PySide.QtCore import QT_TRANSLATE_NOOP  # type: ignore
@@ -932,28 +932,23 @@ G42 D1
         """Test G52 command Generation."""
         self.single_compare(
             [],
-            """(Begin preamble)
-G90
+            """G90
 G21
-(Begin operation)
-(Finish operation: testpath)
-(Begin postamble)
+(Block-name: testpath)
+(Block-expand: 0)
+(Block-enable: 1)
+(Block-name: post_amble)
+(Block-expand: 0)
+(Block-enable: 1)
 """,
-            "--comments",
+            "--bcnc",
         )
-
-        # test outputting the machine name
         self.single_compare(
             [],
-            """(Begin preamble)
-G90
+            """G90
 G21
-(Begin operation)
-(Machine: test, mm/min)
-(Finish operation: testpath)
-(Begin postamble)
 """,
-            "--output_machine_name --comments",
+            "--no-bcnc",
         )
 
     #############################################################################
@@ -1173,82 +1168,82 @@ G90
 
     #############################################################################
 
-    def test00126(self) -> None:
-        """Test command space."""
-        self.compare_third_line("G0 X10 Y20 Z30", "G0 X10.000 Y20.000 Z30.000", "")
-        self.compare_third_line(
-            "G0 X10 Y20 Z30", "G0X10.000Y20.000Z30.000", "--command_space=''"
-        )
-        self.compare_third_line(
-            "G0 X10 Y20 Z30", "G0_X10.000_Y20.000_Z30.000", "--command_space='_'"
-        )
-        path = [Path.Command("(comment with spaces)")]
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-(comment with spaces)
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--command_space=' ' --comments",
-        )
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-(comment with spaces)
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--command_space='' --comments",
-        )
+#     def test00126(self) -> None:
+#         """Test command space."""
+#         self.compare_third_line("G0 X10 Y20 Z30", "G0 X10.000 Y20.000 Z30.000", "")
+#         self.compare_third_line(
+#             "G0 X10 Y20 Z30", "G0X10.000Y20.000Z30.000", "--command_space=''"
+#         )
+#         self.compare_third_line(
+#             "G0 X10 Y20 Z30", "G0_X10.000_Y20.000_Z30.000", "--command_space='_'"
+#         )
+#         path = [Path.Command("(comment with spaces)")]
+#         self.single_compare(
+#             path,
+#             """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (comment with spaces)
+# (Finish operation: testpath)
+# (Begin postamble)
+# """,
+#             "--command_space=' ' --comments",
+#         )
+#         self.single_compare(
+#             path,
+#             """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (comment with spaces)
+# (Finish operation: testpath)
+# (Begin postamble)
+# """,
+#             "--command_space='' --comments",
+#         )
 
     #############################################################################
 
-    def test00127(self) -> None:
-        """Test comment symbol."""
-        path = [Path.Command("(comment with spaces)")]
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-(comment with spaces)
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments",
-        )
-        self.single_compare(
-            path,
-            """;Begin preamble
-G90
-G21
-;Begin operation
-;comment with spaces
-;Finish operation: testpath
-;Begin postamble
-""",
-            "--comment_symbol=';' --comments",
-        )
-        self.single_compare(
-            path,
-            """!Begin preamble
-G90
-G21
-!Begin operation
-!comment with spaces
-!Finish operation: testpath
-!Begin postamble
-""",
-            "--comment_symbol='!' --comments",
-        )
+#     def test00127(self) -> None:
+#         """Test comment symbol."""
+#         path = [Path.Command("(comment with spaces)")]
+#         self.single_compare(
+#             path,
+#             """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (comment with spaces)
+# (Finish operation: testpath)
+# (Begin postamble)
+# """,
+#             "--comments",
+#         )
+#         self.single_compare(
+#             path,
+#             """;Begin preamble
+# G90
+# G21
+# ;Begin operation
+# ;comment with spaces
+# ;Finish operation: testpath
+# ;Begin postamble
+# """,
+#             "--comment_symbol=';' --comments",
+#         )
+#         self.single_compare(
+#             path,
+#             """!Begin preamble
+# G90
+# G21
+# !Begin operation
+# !comment with spaces
+# !Finish operation: testpath
+# !Begin postamble
+# """,
+#             "--comment_symbol='!' --comments",
+#         )
 
     #############################################################################
 
@@ -1275,324 +1270,324 @@ G21
 
     #############################################################################
 
-    def test00135(self) -> None:
-        """Test enabling and disabling coolant."""
-        args: str
-        expected: str
-        gcode: str
+#     def test00135(self) -> None:
+#         """Test enabling and disabling coolant."""
+#         args: str
+#         expected: str
+#         gcode: str
 
-        c = Path.Command("G0 X10 Y20 Z30")
-        self.docobj.Path = Path.Path([c])
+#         c = Path.Command("G0 X10 Y20 Z30")
+#         self.docobj.Path = Path.Path([c])
 
-        # Test Flood coolant enabled
-        self.docobj.addProperty(
-            "App::PropertyEnumeration",
-            "CoolantMode",
-            "Path",
-            QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
-        )
-        self.docobj.CoolantMode = ["None", "Flood", "Mist"]
-        self.docobj.CoolantMode = "Flood"
-        postables = [self.docobj]
-        expected = """(Begin preamble)
-G90
-G21
-(Begin operation)
-(Coolant On: Flood)
-M8
-G0 X10.000 Y20.000 Z30.000
-(Finish operation: testpath)
-(Coolant Off: Flood)
-M9
-(Begin postamble)
-"""
-        args = "--enable_coolant --comments"
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.docobj.removeProperty("CoolantMode")
-        self.assertEqual(gcode, expected)
+#         # Test Flood coolant enabled
+#         self.docobj.addProperty(
+#             "App::PropertyEnumeration",
+#             "CoolantMode",
+#             "Path",
+#             QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
+#         )
+#         self.docobj.CoolantMode = ["None", "Flood", "Mist"]
+#         self.docobj.CoolantMode = "Flood"
+#         postables = [self.docobj]
+#         expected = """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (Coolant On: Flood)
+# M8
+# G0 X10.000 Y20.000 Z30.000
+# (Finish operation: testpath)
+# (Coolant Off: Flood)
+# M9
+# (Begin postamble)
+# """
+#         args = "--enable_coolant --comments"
+#         gcode = postprocessor.export(postables, "gcode.tmp", args)
+#         # print("--------\n" + gcode + "--------\n")
+#         self.docobj.removeProperty("CoolantMode")
+#         self.assertEqual(gcode, expected)
 
-        # Test Mist coolant enabled
-        self.docobj.addProperty(
-            "App::PropertyEnumeration",
-            "CoolantMode",
-            "Path",
-            QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
-        )
-        self.docobj.CoolantMode = ["None", "Flood", "Mist"]
-        self.docobj.CoolantMode = "Mist"
-        postables = [self.docobj]
-        expected = """(Begin preamble)
-G90
-G21
-(Begin operation)
-(Coolant On: Mist)
-M7
-G0 X10.000 Y20.000 Z30.000
-(Finish operation: testpath)
-(Coolant Off: Mist)
-M9
-(Begin postamble)
-"""
-        args = "--enable_coolant --comments"
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.docobj.removeProperty("CoolantMode")
-        self.assertEqual(gcode, expected)
+#         # Test Mist coolant enabled
+#         self.docobj.addProperty(
+#             "App::PropertyEnumeration",
+#             "CoolantMode",
+#             "Path",
+#             QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
+#         )
+#         self.docobj.CoolantMode = ["None", "Flood", "Mist"]
+#         self.docobj.CoolantMode = "Mist"
+#         postables = [self.docobj]
+#         expected = """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (Coolant On: Mist)
+# M7
+# G0 X10.000 Y20.000 Z30.000
+# (Finish operation: testpath)
+# (Coolant Off: Mist)
+# M9
+# (Begin postamble)
+# """
+#         args = "--enable_coolant --comments"
+#         gcode = postprocessor.export(postables, "gcode.tmp", args)
+#         # print("--------\n" + gcode + "--------\n")
+#         self.docobj.removeProperty("CoolantMode")
+#         self.assertEqual(gcode, expected)
 
-        # Test None coolant enabled with CoolantMode property
-        self.docobj.addProperty(
-            "App::PropertyEnumeration",
-            "CoolantMode",
-            "Path",
-            QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
-        )
-        self.docobj.CoolantMode = ["None", "Flood", "Mist"]
-        self.docobj.CoolantMode = "None"
-        postables = [self.docobj]
-        expected = """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X10.000 Y20.000 Z30.000
-(Finish operation: testpath)
-(Begin postamble)
-"""
-        args = "--enable_coolant --comments"
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.docobj.removeProperty("CoolantMode")
-        self.assertEqual(gcode, expected)
+#         # Test None coolant enabled with CoolantMode property
+#         self.docobj.addProperty(
+#             "App::PropertyEnumeration",
+#             "CoolantMode",
+#             "Path",
+#             QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
+#         )
+#         self.docobj.CoolantMode = ["None", "Flood", "Mist"]
+#         self.docobj.CoolantMode = "None"
+#         postables = [self.docobj]
+#         expected = """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# G0 X10.000 Y20.000 Z30.000
+# (Finish operation: testpath)
+# (Begin postamble)
+# """
+#         args = "--enable_coolant --comments"
+#         gcode = postprocessor.export(postables, "gcode.tmp", args)
+#         # print("--------\n" + gcode + "--------\n")
+#         self.docobj.removeProperty("CoolantMode")
+#         self.assertEqual(gcode, expected)
 
-        # Test coolant enabled without a CoolantMode property
-        postables = [self.docobj]
-        expected = """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X10.000 Y20.000 Z30.000
-(Finish operation: testpath)
-(Begin postamble)
-"""
-        args = "--enable_coolant --comments"
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+#         # Test coolant enabled without a CoolantMode property
+#         postables = [self.docobj]
+#         expected = """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# G0 X10.000 Y20.000 Z30.000
+# (Finish operation: testpath)
+# (Begin postamble)
+# """
+#         args = "--enable_coolant --comments"
+#         gcode = postprocessor.export(postables, "gcode.tmp", args)
+#         # print("--------\n" + gcode + "--------\n")
+#         self.assertEqual(gcode, expected)
 
-        # Test Flood coolant disabled
-        self.docobj.addProperty(
-            "App::PropertyEnumeration",
-            "CoolantMode",
-            "Path",
-            QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
-        )
-        self.docobj.CoolantMode = ["None", "Flood", "Mist"]
-        self.docobj.CoolantMode = "Flood"
-        postables = [self.docobj]
-        expected = """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X10.000 Y20.000 Z30.000
-(Finish operation: testpath)
-(Begin postamble)
-"""
-        args = "--disable_coolant --comments"
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.docobj.removeProperty("CoolantMode")
-        self.assertEqual(gcode, expected)
+#         # Test Flood coolant disabled
+#         self.docobj.addProperty(
+#             "App::PropertyEnumeration",
+#             "CoolantMode",
+#             "Path",
+#             QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
+#         )
+#         self.docobj.CoolantMode = ["None", "Flood", "Mist"]
+#         self.docobj.CoolantMode = "Flood"
+#         postables = [self.docobj]
+#         expected = """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# G0 X10.000 Y20.000 Z30.000
+# (Finish operation: testpath)
+# (Begin postamble)
+# """
+#         args = "--disable_coolant --comments"
+#         gcode = postprocessor.export(postables, "gcode.tmp", args)
+#         # print("--------\n" + gcode + "--------\n")
+#         self.docobj.removeProperty("CoolantMode")
+#         self.assertEqual(gcode, expected)
 
-        # Test Mist coolant disabled
-        self.docobj.addProperty(
-            "App::PropertyEnumeration",
-            "CoolantMode",
-            "Path",
-            QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
-        )
-        self.docobj.CoolantMode = ["None", "Flood", "Mist"]
-        self.docobj.CoolantMode = "Mist"
-        postables = [self.docobj]
-        expected = """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X10.000 Y20.000 Z30.000
-(Finish operation: testpath)
-(Begin postamble)
-"""
-        args = "--disable_coolant --comments"
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.docobj.removeProperty("CoolantMode")
-        self.assertEqual(gcode, expected)
+#         # Test Mist coolant disabled
+#         self.docobj.addProperty(
+#             "App::PropertyEnumeration",
+#             "CoolantMode",
+#             "Path",
+#             QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
+#         )
+#         self.docobj.CoolantMode = ["None", "Flood", "Mist"]
+#         self.docobj.CoolantMode = "Mist"
+#         postables = [self.docobj]
+#         expected = """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# G0 X10.000 Y20.000 Z30.000
+# (Finish operation: testpath)
+# (Begin postamble)
+# """
+#         args = "--disable_coolant --comments"
+#         gcode = postprocessor.export(postables, "gcode.tmp", args)
+#         # print("--------\n" + gcode + "--------\n")
+#         self.docobj.removeProperty("CoolantMode")
+#         self.assertEqual(gcode, expected)
 
-        # Test None coolant disabled with CoolantMode property
-        self.docobj.addProperty(
-            "App::PropertyEnumeration",
-            "CoolantMode",
-            "Path",
-            QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
-        )
-        self.docobj.CoolantMode = ["None", "Flood", "Mist"]
-        self.docobj.CoolantMode = "None"
-        postables = [self.docobj]
-        expected = """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X10.000 Y20.000 Z30.000
-(Finish operation: testpath)
-(Begin postamble)
-"""
-        args = "--disable_coolant --comments"
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.docobj.removeProperty("CoolantMode")
-        self.assertEqual(gcode, expected)
+#         # Test None coolant disabled with CoolantMode property
+#         self.docobj.addProperty(
+#             "App::PropertyEnumeration",
+#             "CoolantMode",
+#             "Path",
+#             QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
+#         )
+#         self.docobj.CoolantMode = ["None", "Flood", "Mist"]
+#         self.docobj.CoolantMode = "None"
+#         postables = [self.docobj]
+#         expected = """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# G0 X10.000 Y20.000 Z30.000
+# (Finish operation: testpath)
+# (Begin postamble)
+# """
+#         args = "--disable_coolant --comments"
+#         gcode = postprocessor.export(postables, "gcode.tmp", args)
+#         # print("--------\n" + gcode + "--------\n")
+#         self.docobj.removeProperty("CoolantMode")
+#         self.assertEqual(gcode, expected)
 
-        # Test coolant disabled without a CoolantMode property
-        postables = [self.docobj]
-        expected = """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X10.000 Y20.000 Z30.000
-(Finish operation: testpath)
-(Begin postamble)
-"""
-        args = "--disable_coolant --comments"
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.assertEqual(gcode, expected)
+#         # Test coolant disabled without a CoolantMode property
+#         postables = [self.docobj]
+#         expected = """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# G0 X10.000 Y20.000 Z30.000
+# (Finish operation: testpath)
+# (Begin postamble)
+# """
+#         args = "--disable_coolant --comments"
+#         gcode = postprocessor.export(postables, "gcode.tmp", args)
+#         # print("--------\n" + gcode + "--------\n")
+#         self.assertEqual(gcode, expected)
 
-        # Test Flood coolant configured but no coolant argument (default)
-        self.docobj.addProperty(
-            "App::PropertyEnumeration",
-            "CoolantMode",
-            "Path",
-            QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
-        )
-        self.docobj.CoolantMode = ["None", "Flood", "Mist"]
-        self.docobj.CoolantMode = "Flood"
-        postables = [self.docobj]
-        expected = """(Begin preamble)
-G90
-G21
-(Begin operation)
-G0 X10.000 Y20.000 Z30.000
-(Finish operation: testpath)
-(Begin postamble)
-"""
-        args = "--comments"
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        # print("--------\n" + gcode + "--------\n")
-        self.docobj.removeProperty("CoolantMode")
-        self.assertEqual(gcode, expected)
-
-    #############################################################################
-
-    def test00137(self) -> None:
-        """Test enabling/disabling machine specific commands."""
-        path = [Path.Command("(MC_RUN_COMMAND: blah)")]
-        # test with machine specific commands enabled
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-(MC_RUN_COMMAND: blah)
-blah
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--enable_machine_specific_commands --comments",
-        )
-        # test with machine specific commands disabled
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-(MC_RUN_COMMAND: blah)
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--disable_machine_specific_commands --comments",
-        )
-        # test with machine specific commands default
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-(MC_RUN_COMMAND: blah)
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments",
-        )
-        # test with odd characters and spaces in the machine specific command
-        path = [Path.Command("(MC_RUN_COMMAND: These are odd characters:!@#$%^&*?/)")]
-        self.single_compare(
-            path,
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-(MC_RUN_COMMAND: These are odd characters:!@#$%^&*?/)
-These are odd characters:!@#$%^&*?/
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--enable_machine_specific_commands --comments",
-        )
+#         # Test Flood coolant configured but no coolant argument (default)
+#         self.docobj.addProperty(
+#             "App::PropertyEnumeration",
+#             "CoolantMode",
+#             "Path",
+#             QT_TRANSLATE_NOOP("App::Property", "Coolant option for this operation"),
+#         )
+#         self.docobj.CoolantMode = ["None", "Flood", "Mist"]
+#         self.docobj.CoolantMode = "Flood"
+#         postables = [self.docobj]
+#         expected = """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# G0 X10.000 Y20.000 Z30.000
+# (Finish operation: testpath)
+# (Begin postamble)
+# """
+#         args = "--comments"
+#         gcode = postprocessor.export(postables, "gcode.tmp", args)
+#         # print("--------\n" + gcode + "--------\n")
+#         self.docobj.removeProperty("CoolantMode")
+#         self.assertEqual(gcode, expected)
 
     #############################################################################
 
-    def test00138(self) -> None:
-        """Test end of line characters."""
-        args: str
-        expected: bytes
-        gcode_bytes: bytes
+#     def test00137(self) -> None:
+#         """Test enabling/disabling machine specific commands."""
+#         path = [Path.Command("(MC_RUN_COMMAND: blah)")]
+#         # test with machine specific commands enabled
+#         self.single_compare(
+#             path,
+#             """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (MC_RUN_COMMAND: blah)
+# blah
+# (Finish operation: testpath)
+# (Begin postamble)
+# """,
+#             "--enable_machine_specific_commands --comments",
+#         )
+#         # test with machine specific commands disabled
+#         self.single_compare(
+#             path,
+#             """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (MC_RUN_COMMAND: blah)
+# (Finish operation: testpath)
+# (Begin postamble)
+# """,
+#             "--disable_machine_specific_commands --comments",
+#         )
+#         # test with machine specific commands default
+#         self.single_compare(
+#             path,
+#             """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (MC_RUN_COMMAND: blah)
+# (Finish operation: testpath)
+# (Begin postamble)
+# """,
+#             "--comments",
+#         )
+#         # test with odd characters and spaces in the machine specific command
+#         path = [Path.Command("(MC_RUN_COMMAND: These are odd characters:!@#$%^&*?/)")]
+#         self.single_compare(
+#             path,
+#             """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (MC_RUN_COMMAND: These are odd characters:!@#$%^&*?/)
+# These are odd characters:!@#$%^&*?/
+# (Finish operation: testpath)
+# (Begin postamble)
+# """,
+#             "--enable_machine_specific_commands --comments",
+#         )
 
-        self.docobj.Path = Path.Path([])
-        postables = [self.docobj]
+    #############################################################################
 
-        # Test with whatever the system running the test happens to use
-        expected = b"G90" + os.linesep.encode() + b"G21" + os.linesep.encode()
-        args = ""
-        _ = postprocessor.export(postables, "gcode.tmp", args)
-        with open("gcode.tmp", mode="rb") as bfile:
-            gcode_bytes = bfile.read()
-        self.assertEqual(gcode_bytes, expected)
+    # def test00138(self) -> None:
+    #     """Test end of line characters."""
+    #     args: str
+    #     expected: bytes
+    #     gcode_bytes: bytes
 
-        # Test with a new line
-        expected = b"G90\nG21\n"
-        args = "--end_of_line_characters='\n'"
-        _ = postprocessor.export(postables, "gcode.tmp", args)
-        with open("gcode.tmp", mode="rb") as bfile:
-            gcode_bytes = bfile.read()
-        self.assertEqual(gcode_bytes, expected)
+    #     self.docobj.Path = Path.Path([])
+    #     postables = [self.docobj]
 
-        # Test with a carriage return followed by a new line
-        expected = b"G90\r\nG21\r\n"
-        args = "--end_of_line_characters='\r\n'"
-        _ = postprocessor.export(postables, "gcode.tmp", args)
-        with open("gcode.tmp", mode="rb") as bfile:
-            gcode_bytes = bfile.read()
-        self.assertEqual(gcode_bytes, expected)
+    #     # Test with whatever the system running the test happens to use
+    #     expected = b"G90" + os.linesep.encode() + b"G21" + os.linesep.encode()
+    #     args = ""
+    #     _ = postprocessor.export(postables, "gcode.tmp", args)
+    #     with open("gcode.tmp", mode="rb") as bfile:
+    #         gcode_bytes = bfile.read()
+    #     self.assertEqual(gcode_bytes, expected)
 
-        # Test with a carriage return
-        expected = b"G90\rG21\r"
-        args = "--end_of_line_characters='\r'"
-        _ = postprocessor.export(postables, "gcode.tmp", args)
-        with open("gcode.tmp", mode="rb") as bfile:
-            gcode_bytes = bfile.read()
-        self.assertEqual(gcode_bytes, expected)
+    #     # Test with a new line
+    #     expected = b"G90\nG21\n"
+    #     args = "--end_of_line_characters='\n'"
+    #     _ = postprocessor.export(postables, "gcode.tmp", args)
+    #     with open("gcode.tmp", mode="rb") as bfile:
+    #         gcode_bytes = bfile.read()
+    #     self.assertEqual(gcode_bytes, expected)
+
+    #     # Test with a carriage return followed by a new line
+    #     expected = b"G90\r\nG21\r\n"
+    #     args = "--end_of_line_characters='\r\n'"
+    #     _ = postprocessor.export(postables, "gcode.tmp", args)
+    #     with open("gcode.tmp", mode="rb") as bfile:
+    #         gcode_bytes = bfile.read()
+    #     self.assertEqual(gcode_bytes, expected)
+
+    #     # Test with a carriage return
+    #     expected = b"G90\rG21\r"
+    #     args = "--end_of_line_characters='\r'"
+    #     _ = postprocessor.export(postables, "gcode.tmp", args)
+    #     with open("gcode.tmp", mode="rb") as bfile:
+    #         gcode_bytes = bfile.read()
+    #     self.assertEqual(gcode_bytes, expected)
 
     #############################################################################
 
@@ -1622,33 +1617,33 @@ These are odd characters:!@#$%^&*?/
 
     #############################################################################
 
-    def test00145(self) -> None:
-        """Test the finish label argument."""
-        # test the default finish label
-        self.single_compare(
-            [],
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments",
-        )
+#     def test00145(self) -> None:
+#         """Test the finish label argument."""
+#         # test the default finish label
+#         self.single_compare(
+#             [],
+#             """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (Finish operation: testpath)
+# (Begin postamble)
+# """,
+#             "--comments",
+#         )
 
-        # test a changed finish label
-        self.single_compare(
-            [],
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-(End operation: testpath)
-(Begin postamble)
-""",
-            "--finish_label='End' --comments",
-        )
+#         # test a changed finish label
+#         self.single_compare(
+#             [],
+#             """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (End operation: testpath)
+# (Begin postamble)
+# """,
+#             "--finish_label='End' --comments",
+#         )
 
     #############################################################################
 
@@ -1673,7 +1668,7 @@ G21
         self.assertEqual(gcode.splitlines()[0], "(Exported by FreeCAD)")
         self.assertEqual(
             gcode.splitlines()[1],
-            "(Post Processor: PathScripts.post.refactored_test_post)",
+            "(Post Processor: Path.Post.scripts.refactored_test_post)",
         )
         self.assertEqual(gcode.splitlines()[2], "(Cam File: )")
         self.assertIn("(Output Time: ", gcode.splitlines()[3])
@@ -1705,7 +1700,7 @@ G21
         self.assertEqual(gcode.splitlines()[0], "(Exported by FreeCAD)")
         self.assertEqual(
             gcode.splitlines()[1],
-            "(Post Processor: PathScripts.post.refactored_test_post)",
+            "(Post Processor: Path.Post.scripts.refactored_test_post)",
         )
         self.assertEqual(gcode.splitlines()[2], "(Cam File: )")
         self.assertIn("(Output Time: ", gcode.splitlines()[3])
@@ -1735,88 +1730,88 @@ G21
 
     #############################################################################
 
-    def test00165(self) -> None:
-        """Test line number increment."""
-        path = [
-            Path.Command("G0 X1 Y2"),
-            Path.Command("G0 Z8"),
-        ]
-        # check the default line number increment
-        self.single_compare(
-            path,
-            """N100 G90
-N110 G21
-N120 G0 X1.000 Y2.000
-N130 G0 Z8.000
-""",
-            "--line-numbers",
-        )
+#     def test00165(self) -> None:
+#         """Test line number increment."""
+#         path = [
+#             Path.Command("G0 X1 Y2"),
+#             Path.Command("G0 Z8"),
+#         ]
+#         # check the default line number increment
+#         self.single_compare(
+#             path,
+#             """N100 G90
+# N110 G21
+# N120 G0 X1.000 Y2.000
+# N130 G0 Z8.000
+# """,
+#             "--line-numbers",
+#         )
 
-        # check a non-default line number increment
-        self.single_compare(
-            path,
-            """N140 G90
-N143 G21
-N146 G0 X1.000 Y2.000
-N149 G0 Z8.000
-""",
-            "--line-numbers --line_number_increment=3",
-        )
+#         # check a non-default line number increment
+#         self.single_compare(
+#             path,
+#             """N140 G90
+# N143 G21
+# N146 G0 X1.000 Y2.000
+# N149 G0 Z8.000
+# """,
+#             "--line-numbers --line_number_increment=3",
+#         )
 
-        # check a non-default starting line number
-        self.single_compare(
-            path,
-            """N123 G90
-N126 G21
-N129 G0 X1.000 Y2.000
-N132 G0 Z8.000
-""",
-            "--line-numbers --line_number_increment=3 --line_number_start=123",
-        )
+#         # check a non-default starting line number
+#         self.single_compare(
+#             path,
+#             """N123 G90
+# N126 G21
+# N129 G0 X1.000 Y2.000
+# N132 G0 Z8.000
+# """,
+#             "--line-numbers --line_number_increment=3 --line_number_start=123",
+#         )
 
     #############################################################################
 
-    def test00166(self) -> None:
-        """Test listing tools in preamble."""
+#     def test00166(self) -> None:
+#         """Test listing tools in preamble."""
 
-        # test the default behavior for listing tools in the preamble
-        args: str
-        attrs: Dict[str, Any]
-        expected: str
-        gcode: str
+#         # test the default behavior for listing tools in the preamble
+#         args: str
+#         attrs: Dict[str, Any]
+#         expected: str
+#         gcode: str
 
-        path = [
-            Path.Command("M6 T2"),
-            Path.Command("M3 S3000"),
-        ]
-        self.docobj.Path = Path.Path(path)
-        default_tool_controller = PathToolController.Create()
-        attrs = {
-            "shape": None,
-            "name": "T2",
-            "parameter": {"Diameter": 1.75},
-            "attribute": [],
-        }
-        tool2 = PathToolBit.Factory.CreateFromAttrs(attrs, "T2")
-        tool2_controller = PathToolController.Create(
-            name="TC2", tool=tool2, toolNumber=2
-        )
-        postables = [default_tool_controller, tool2_controller, self.docobj]
-        expected = """(Begin preamble)
-G90
-G21
-(Begin operation)
-(Begin toolchange)
-M6 T2
-M3 S3000
-(Finish operation: testpath)
-(Begin postamble)
-"""
-        args = "--comments --tool_change --list_tools_in_preamble"
-        gcode = postprocessor.export(postables, "gcode.tmp", args)
-        print("--------\n" + gcode + "--------\n")
-        self.docobj.removeProperty("tool2")
-        self.assertEqual(gcode, expected)
+#         path = [
+#             Path.Command("M6 T2"),
+#             Path.Command("M3 S3000"),
+#         ]
+#         self.docobj.Path = Path.Path(path)
+#         default_tool_controller = Path.Tool.Controller.Create()
+#         attrs = {
+#             "shape": None,
+#             "name": "T2",
+#             "parameter": {"Diameter": 1.75},
+#             "attribute": [],
+#         }
+#         tool2 = Path.Tool.Bit.Factory.CreateFromAttrs(attrs, "T2")
+#         tool2_controller = Path.Tool.Controller.Create(
+#             name="TC2", tool=tool2, toolNumber=2
+#         )
+#         postables = [default_tool_controller, tool2_controller, self.docobj]
+#         expected = """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (Begin toolchange)
+# M6 T2
+# M3 S3000
+# (Finish operation: testpath)
+# (Begin postamble)
+# """
+#         args = "--comments --tool_change --list_tools_in_preamble"
+#         gcode = postprocessor.export(postables, "gcode.tmp", args)
+#         print("--------\n" + gcode + "--------\n")
+#         self.docobj.removeProperty("tool2")
+#         self.assertEqual(gcode, expected)
 
     #############################################################################
 
@@ -1890,76 +1885,29 @@ M3 S3000
   --bcnc                Add Job operations as bCNC block headers. Consider
                         suppressing comments by adding --no-comments
   --no-bcnc             Suppress bCNC block header output (default)
-  --chipbreaking_amount CHIPBREAKING_AMOUNT
-                        Amount to move for chipbreaking in a translated G73
-                        command, default is 0.25 mm
-  --command_space COMMAND_SPACE
-                        The character to use between parts of a command,
-                        default is a space, may also use a null string
   --comments            Output comments (default)
   --no-comments         Suppress comment output
-  --comment_symbol COMMENT_SYMBOL
-                        The character used to start a comment, default is "("
-  --enable_coolant      Enable coolant
-  --disable_coolant     Disable coolant (default)
-  --enable_machine_specific_commands
-                        Enable machine specific commands of the form
-                        (MC_RUN_COMMAND: blah)
-  --disable_machine_specific_commands
-                        Disable machine specific commands (default)
-  --end_of_line_characters END_OF_LINE_CHARACTERS
-                        The character(s) to use at the end of each line in the
-                        output file, default is whatever the system uses, may
-                        also use '\\n' or '\\r\\n'
   --feed-precision FEED_PRECISION
                         Number of digits of precision for feed rate, default
                         is 3
-  --finish_label FINISH_LABEL
-                        The characters to use in the 'Finish operation'
-                        comment, default is "Finish"
   --header              Output headers (default)
   --no-header           Suppress header output
-  --line_number_increment LINE_NUMBER_INCREMENT
-                        Amount to increment the line numbers, default is 10
-  --line_number_start LINE_NUMBER_START
-                        The number the line numbers start at, default is 100
   --line-numbers        Prefix with line numbers
   --no-line-numbers     Don't prefix with line numbers (default)
-  --list_tools_in_preamble
-                        List the tools used in the operation in the preamble
-  --no-list_tools_in_preamble
-                        Don't list the tools used in the operation (default)
   --modal               Don't output the G-command name if it is the same as
                         the previous line
   --no-modal            Output the G-command name even if it is the same as
                         the previous line (default)
-  --output_adaptive     Enables special processing for operations with
-                        'Adaptive' in the name
-  --no-output_adaptive  Disables special processing for operations with
-                        'Adaptive' in the name (default)
   --output_all_arguments
                         Output all of the available arguments
   --no-output_all_arguments
                         Don't output all of the available arguments (default)
-  --output_machine_name
-                        Output the machine name in the pre-operation
-                        information
-  --no-output_machine_name
-                        Don't output the machine name in the pre-operation
-                        information (default)
-  --output_path_labels  Output Path labels at the beginning of each Path
-  --no-output_path_labels
-                        Don't output Path labels at the beginning of each Path
-                        (default)
   --output_visible_arguments
                         Output all of the visible arguments
   --no-output_visible_arguments
                         Don't output the visible arguments (default)
   --postamble POSTAMBLE
                         Set commands to be issued after the last command,
-                        default is ""
-  --post_operation POST_OPERATION
-                        Set commands to be issued after every operation,
                         default is ""
   --preamble PREAMBLE   Set commands to be issued before the first command,
                         default is ""
@@ -2000,91 +1948,91 @@ M3 S3000
 
     #############################################################################
 
-    def test00205(self) -> None:
-        """Test output_machine_name argument."""
-        # test the default behavior
-        self.single_compare(
-            [],
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments",
-        )
+#     def test00205(self) -> None:
+#         """Test output_machine_name argument."""
+#         # test the default behavior
+#         self.single_compare(
+#             [],
+#             """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (Finish operation: testpath)
+# (Begin postamble)
+# """,
+#             "--comments",
+#         )
 
-        # test outputting the machine name
-        self.single_compare(
-            [],
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-(Machine: test, mm/min)
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--output_machine_name --comments",
-        )
+#         # test outputting the machine name
+#         self.single_compare(
+#             [],
+#             """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (Machine: test, mm/min)
+# (Finish operation: testpath)
+# (Begin postamble)
+# """,
+#             "--output_machine_name --comments",
+#         )
 
-        # test not outputting the machine name
-        self.single_compare(
-            [],
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--no-output_machine_name --comments",
-        )
+#         # test not outputting the machine name
+#         self.single_compare(
+#             [],
+#             """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (Finish operation: testpath)
+# (Begin postamble)
+# """,
+#             "--no-output_machine_name --comments",
+#         )
 
     #############################################################################
 
-    def test00206(self) -> None:
-        """Test output_path_labels argument."""
-        # test the default behavior
-        self.single_compare(
-            [],
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--comments",
-        )
+#     def test00206(self) -> None:
+#         """Test output_path_labels argument."""
+#         # test the default behavior
+#         self.single_compare(
+#             [],
+#             """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (Finish operation: testpath)
+# (Begin postamble)
+# """,
+#             "--comments",
+#         )
 
-        # test outputting the path labels
-        self.single_compare(
-            [],
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-(Path: testpath)
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--output_path_labels --comments",
-        )
+#         # test outputting the path labels
+#         self.single_compare(
+#             [],
+#             """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (Path: testpath)
+# (Finish operation: testpath)
+# (Begin postamble)
+# """,
+#             "--output_path_labels --comments",
+#         )
 
-        # test not outputting the path labels
-        self.single_compare(
-            [],
-            """(Begin preamble)
-G90
-G21
-(Begin operation)
-(Finish operation: testpath)
-(Begin postamble)
-""",
-            "--no-output_path_labels --comments",
-        )
+#         # test not outputting the path labels
+#         self.single_compare(
+#             [],
+#             """(Begin preamble)
+# G90
+# G21
+# (Begin operation)
+# (Finish operation: testpath)
+# (Begin postamble)
+# """,
+#             "--no-output_path_labels --comments",
+#         )
 
     #############################################################################
 
@@ -2103,17 +2051,17 @@ G21
 
     #############################################################################
 
-    def test00215(self) -> None:
-        """Test the post_operation argument."""
-        self.single_compare(
-            [],
-            """G90
-G21
-G90 G80
-G40 G49
-""",
-            "--post_operation='G90 G80\nG40 G49'",
-        )
+#     def test00215(self) -> None:
+#         """Test the post_operation argument."""
+#         self.single_compare(
+#             [],
+#             """G90
+# G21
+# G90 G80
+# G40 G49
+# """,
+#             "--post_operation='G90 G80\nG40 G49'",
+#         )
 
     #############################################################################
 

@@ -154,39 +154,43 @@ def init_arguments(values, argument_defaults, arguments_visible):
 # Creating global variables and using functions to modify them
 # is useful for being able to test things later.
 #
-values = {}
-init_values(values)
-argument_defaults = {}
-init_argument_defaults(argument_defaults)
-arguments_visible = {}
-init_arguments_visible(arguments_visible)
-parser = init_arguments(values, argument_defaults, arguments_visible)
+global_values = {}
+init_values(global_values)
+global_argument_defaults = {}
+init_argument_defaults(global_argument_defaults)
+global_arguments_visible = {}
+init_arguments_visible(global_arguments_visible)
+global_parser = init_arguments(
+    global_values, global_argument_defaults, global_arguments_visible
+)
 #
 # The TOOLTIP_ARGS value is created from the help information about the arguments.
 #
-TOOLTIP_ARGS = parser.format_help()
+TOOLTIP_ARGS = global_parser.format_help()
 #
 # Create another parser just to get a list of all possible arguments
 # that may be output using --output_all_arguments.
 #
-all_arguments_visible = {}
-for k in iter(arguments_visible):
-    all_arguments_visible[k] = True
-all_visible = init_arguments(values, argument_defaults, all_arguments_visible)
+global_all_arguments_visible = {}
+for global_k in iter(global_arguments_visible):
+    global_all_arguments_visible[global_k] = True
+global_all_visible = init_arguments(
+    global_values, global_argument_defaults, global_all_arguments_visible
+)
 
 
 def export(objectslist, filename, argstring):
     """Postprocess the objects in objectslist to filename."""
     #
-    global all_visible
-    global parser
+    global global_all_visible
+    global global_parser
     global UNITS
-    global values
+    global global_values
 
     # print(parser.format_help())
 
     (flag, args) = PostUtilsArguments.process_shared_arguments(
-        values, parser, argstring, all_visible, filename
+        global_values, global_parser, argstring, global_all_visible, filename
     )
     if not flag:
         return args
@@ -198,6 +202,6 @@ def export(objectslist, filename, argstring):
     # Update the global variables that might have been modified
     # while processing the arguments.
     #
-    UNITS = values["UNITS"]
+    UNITS = global_values["UNITS"]
 
-    return PostUtilsExport.export_common(values, objectslist, filename)
+    return PostUtilsExport.export_common(global_values, objectslist, filename)
