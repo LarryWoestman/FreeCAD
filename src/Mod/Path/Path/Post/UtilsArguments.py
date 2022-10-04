@@ -36,7 +36,7 @@ import shlex
 
 from FreeCAD import Units
 
-from PathScripts import PostUtilsParse
+from Path.Post import UtilsParse
 
 
 def add_flag_type_arguments(
@@ -459,7 +459,7 @@ def init_shared_values(values):
     # to process the G-code parameter values
     #
     values["PARAMETER_FUNCTIONS"] = {}
-    PostUtilsParse.init_parameter_functions(values["PARAMETER_FUNCTIONS"])
+    UtilsParse.init_parameter_functions(values["PARAMETER_FUNCTIONS"])
     #
     # This list controls the order of parameters in a line during output.
     #
