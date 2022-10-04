@@ -206,7 +206,7 @@ def export(objectslist: ObjectsList, filename: str, argstring: str) -> str:
 
     # print(parser.format_help())
 
-    (flag, args) = PostUtilsArguments.process_shared_arguments(
+    (flag, args) = UtilsArguments.process_shared_arguments(
         global_values, global_parser, argstring, global_all_visible, filename
     )
     if not flag:
