@@ -25,13 +25,13 @@ import FreeCAD
 
 import Path
 
-from PathScripts import PathLog
-from PathScripts.post import refactored_test_post as postprocessor
+from Path import Log
+from Path.Post.scripts import refactored_test_post as postprocessor
 from PathTests import PathTestUtils
 
 
-PathLog.setLevel(PathLog.Level.DEBUG, PathLog.thisModule())
-PathLog.trackModule(PathLog.thisModule())
+Log.setLevel(Log.Level.DEBUG, Log.thisModule())
+Log.trackModule(Log.thisModule())
 
 
 class TestRefactoredTestPostMCodes(PathTestUtils.PathTestBase):
