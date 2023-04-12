@@ -144,6 +144,7 @@ def init_shared_arguments(
         prog=values["MACHINE_NAME"], usage=argparse.SUPPRESS, add_help=False
     )
     shared = parser.add_argument_group("Arguments that are commonly used")
+    shared = parser.add_argument_group("Arguments that are commonly used")
     add_flag_type_arguments(
         shared,
         argument_defaults["metric_inches"],
@@ -535,6 +536,7 @@ def init_shared_values(values: Values) -> None:
     # that get translated to G0 and G1 commands.
     #
     values["DRILL_CYCLES_TO_TRANSLATE"] = ["G73", "G81", "G82", "G83"]
+    values["DRILL_CYCLES_TO_TRANSLATE"] = ["G73", "G81", "G82", "G83"]
     #
     # If this is set to True, then M7, M8, and M9 commands
     # to enable/disable coolant will be output.
@@ -614,6 +616,8 @@ def init_shared_values(values: Values) -> None:
     #
     values["OUTPUT_COMMENTS"] = True
     #
+    # if False duplicate axis values or feeds are suppressed
+    # if they are the same as the previous line.
     # if False duplicate axis values or feeds are suppressed
     # if they are the same as the previous line.
     #
@@ -943,6 +947,7 @@ def process_shared_arguments(
     return (True, args)
 
 
+
 #
 # LinuxCNC (and GRBL) G-Code Parameter/word Patterns
 # __________________________________________________
@@ -1012,6 +1017,8 @@ def process_shared_arguments(
 #
 # G10                       P D H R
 #
+# G65                       P L args (args are A-Z excluding G, L, N, O, and P)
+# G65                       "program.cnc" L args
 # G65                       P L args (args are A-Z excluding G, L, N, O, and P)
 # G65                       "program.cnc" L args
 #
