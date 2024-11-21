@@ -116,7 +116,8 @@ class TestRefactoredTestPostGCodes(PathTestUtils.PathTestBase):
     #
     #   00000 - 00099  tests that don't fit any other category
     #   00100 - 09999  tests for all of the various arguments/options
-    #   10000 - 19999  tests for the various G codes at 10000 + 10 * g_code_value
+    #   10000 - 18999  tests for the various G codes at 10000 + 10 * g_code_value
+    #   19000 - 19999  tests for the A, B, and C axis outputs
     #   20000 - 29999  tests for the various M codes at 20000 + 10 * m_code_value
     #
     #############################################################################
@@ -166,7 +167,7 @@ class TestRefactoredTestPostGCodes(PathTestUtils.PathTestBase):
         self.compare_third_line(
             "G1 X10 Y20 Z30 A40 B50 C60 U70 V80 W90 F1.23456",
             (
-                "G1 X0.3937 Y0.7874 Z1.1811 A1.5748 B1.9685 C2.3622 "
+                "G1 X0.3937 Y0.7874 Z1.1811 A40.0000 B50.0000 C60.0000 "
                 "U2.7559 V3.1496 W3.5433 F2.9163"
             ),
             "--inches",
@@ -497,7 +498,8 @@ class TestRefactoredTestPostGCodes(PathTestUtils.PathTestBase):
                 "G43.1 X1.234567 Y2.345678 Z3.456789 A4.567891 B5.678912 C6.789123 "
                 "U7.891234 V8.912345 W9.123456"
             ),
-            ("G43.1 X0.0486 Y0.0923 Z0.1361 A0.1798 B0.2236 C0.2673 " "U0.3107 V0.3509 W0.3592"),
+            ("G43.1 X0.0486 Y0.0923 Z0.1361 A4.5679 B5.6789 C6.7891 " 
+             "U0.3107 V0.3509 W0.3592"),
             "--inches",
         )
 
@@ -546,7 +548,7 @@ G52 X0.000 Y0.000 Z0.000 A0.000 B0.000 C0.000 U0.000 V0.000 W0.000
             ],
             """G90
 G20
-G52 X0.0486 Y0.0923 Z0.1361 A0.1798 B0.2236 C0.2673 U0.3107 V0.3509 W0.3592
+G52 X0.0486 Y0.0923 Z0.1361 A4.5679 B5.6789 C6.7891 U0.3107 V0.3509 W0.3592
 G52 X0.0000 Y0.0000 Z0.0000 A0.0000 B0.0000 C0.0000 U0.0000 V0.0000 W0.0000
 """,
             "--inches",
@@ -1408,3 +1410,667 @@ G90
     def test10990(self):
         """Test G99 command Generation."""
         self.compare_third_line("G99", "G99", "")
+
+    #############################################################################
+    #############################################################################
+    #  Testing A, B, & C axis outputs (in a great deal of detail :-)
+    #############################################################################
+    #############################################################################
+
+    def test19100(self):
+        """Test A axis output for values between 0 and 90 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A40",
+            "G1 X10.000 Y20.000 Z30.000 A40.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A40",
+            "G1 X0.3937 Y0.7874 Z1.1811 A40.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19110(self):
+        """Test A axis output for 89 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A89",
+            "G1 X10.000 Y20.000 Z30.000 A89.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A89",
+            "G1 X0.3937 Y0.7874 Z1.1811 A89.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19120(self):
+        """Test A axis output for 90 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A90",
+            "G1 X10.000 Y20.000 Z30.000 A90.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A90",
+            "G1 X0.3937 Y0.7874 Z1.1811 A90.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19130(self):
+        """Test A axis output for 91 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A91",
+            "G1 X10.000 Y20.000 Z30.000 A91.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A91",
+            "G1 X0.3937 Y0.7874 Z1.1811 A91.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19140(self):
+        """Test A axis output for values between 90 and 180 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A100",
+            "G1 X10.000 Y20.000 Z30.000 A100.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A100",
+            "G1 X0.3937 Y0.7874 Z1.1811 A100.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19150(self):
+        """Test A axis output for values between 180 and 360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A240",
+            "G1 X10.000 Y20.000 Z30.000 A240.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A240",
+            "G1 X0.3937 Y0.7874 Z1.1811 A240.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19160(self):
+        """Test A axis output for values greater than 360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A440",
+            "G1 X10.000 Y20.000 Z30.000 A440.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A440",
+            "G1 X0.3937 Y0.7874 Z1.1811 A440.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19170(self):
+        """Test A axis output for values between 0 and -90 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-40",
+            "G1 X10.000 Y20.000 Z30.000 A-40.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-40",
+            "G1 X0.3937 Y0.7874 Z1.1811 A-40.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19180(self):
+        """Test A axis output for values between -90 and -180 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-100",
+            "G1 X10.000 Y20.000 Z30.000 A-100.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-100",
+            "G1 X0.3937 Y0.7874 Z1.1811 A-100.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19190(self):
+        """Test A axis output for values between -180 and -360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-240",
+            "G1 X10.000 Y20.000 Z30.000 A-240.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-240",
+            "G1 X0.3937 Y0.7874 Z1.1811 A-240.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19200(self):
+        """Test A axis output for values below -360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-440",
+            "G1 X10.000 Y20.000 Z30.000 A-440.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-440",
+            "G1 X0.3937 Y0.7874 Z1.1811 A-440.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19300(self):
+        """Test B axis output for values between 0 and 90 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B40",
+            "G1 X10.000 Y20.000 Z30.000 B40.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B40",
+            "G1 X0.3937 Y0.7874 Z1.1811 B40.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19310(self):
+        """Test B axis output for 89 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B89",
+            "G1 X10.000 Y20.000 Z30.000 B89.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B89",
+            "G1 X0.3937 Y0.7874 Z1.1811 B89.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19320(self):
+        """Test B axis output for 90 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B90",
+            "G1 X10.000 Y20.000 Z30.000 B90.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B90",
+            "G1 X0.3937 Y0.7874 Z1.1811 B90.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19330(self):
+        """Test B axis output for 91 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B91",
+            "G1 X10.000 Y20.000 Z30.000 B91.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B91",
+            "G1 X0.3937 Y0.7874 Z1.1811 B91.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19340(self):
+        """Test B axis output for values between 90 and 180 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B100",
+            "G1 X10.000 Y20.000 Z30.000 B100.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B100",
+            "G1 X0.3937 Y0.7874 Z1.1811 B100.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19350(self):
+        """Test B axis output for values between 180 and 360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B240",
+            "G1 X10.000 Y20.000 Z30.000 B240.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B240",
+            "G1 X0.3937 Y0.7874 Z1.1811 B240.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19360(self):
+        """Test B axis output for values greater than 360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B440",
+            "G1 X10.000 Y20.000 Z30.000 B440.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B440",
+            "G1 X0.3937 Y0.7874 Z1.1811 B440.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19370(self):
+        """Test B axis output for values between 0 and -90 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B-40",
+            "G1 X10.000 Y20.000 Z30.000 B-40.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B-40",
+            "G1 X0.3937 Y0.7874 Z1.1811 B-40.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19380(self):
+        """Test B axis output for values between -90 and -180 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B-100",
+            "G1 X10.000 Y20.000 Z30.000 B-100.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B-100",
+            "G1 X0.3937 Y0.7874 Z1.1811 B-100.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19390(self):
+        """Test B axis output for values between -180 and -360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B-240",
+            "G1 X10.000 Y20.000 Z30.000 B-240.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B-240",
+            "G1 X0.3937 Y0.7874 Z1.1811 B-240.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19400(self):
+        """Test B axis output for values below -360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B-440",
+            "G1 X10.000 Y20.000 Z30.000 B-440.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 B-440",
+            "G1 X0.3937 Y0.7874 Z1.1811 B-440.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19500(self):
+        """Test C axis output for values between 0 and 90 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C40",
+            "G1 X10.000 Y20.000 Z30.000 C40.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C40",
+            "G1 X0.3937 Y0.7874 Z1.1811 C40.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19510(self):
+        """Test C axis output for 89 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C89",
+            "G1 X10.000 Y20.000 Z30.000 C89.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C89",
+            "G1 X0.3937 Y0.7874 Z1.1811 C89.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19520(self):
+        """Test C axis output for 90 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C90",
+            "G1 X10.000 Y20.000 Z30.000 C90.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C90",
+            "G1 X0.3937 Y0.7874 Z1.1811 C90.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19530(self):
+        """Test C axis output for 91 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C91",
+            "G1 X10.000 Y20.000 Z30.000 C91.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C91",
+            "G1 X0.3937 Y0.7874 Z1.1811 C91.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19540(self):
+        """Test C axis output for values between 90 and 180 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C100",
+            "G1 X10.000 Y20.000 Z30.000 C100.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C100",
+            "G1 X0.3937 Y0.7874 Z1.1811 C100.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19550(self):
+        """Test C axis output for values between 180 and 360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C240",
+            "G1 X10.000 Y20.000 Z30.000 C240.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C240",
+            "G1 X0.3937 Y0.7874 Z1.1811 C240.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19560(self):
+        """Test C axis output for values greater than 360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C440",
+            "G1 X10.000 Y20.000 Z30.000 C440.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C440",
+            "G1 X0.3937 Y0.7874 Z1.1811 C440.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19570(self):
+        """Test C axis output for values between 0 and -90 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C-40",
+            "G1 X10.000 Y20.000 Z30.000 C-40.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C-40",
+            "G1 X0.3937 Y0.7874 Z1.1811 C-40.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19580(self):
+        """Test C axis output for values between -90 and -180 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C-100",
+            "G1 X10.000 Y20.000 Z30.000 C-100.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C-100",
+            "G1 X0.3937 Y0.7874 Z1.1811 C-100.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19590(self):
+        """Test C axis output for values between -180 and -360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C-240",
+            "G1 X10.000 Y20.000 Z30.000 C-240.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C-240",
+            "G1 X0.3937 Y0.7874 Z1.1811 C-240.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19600(self):
+        """Test C axis output for values below -360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C-440",
+            "G1 X10.000 Y20.000 Z30.000 C-440.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 C-440",
+            "G1 X0.3937 Y0.7874 Z1.1811 C-440.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19700(self):
+        """Test combined A, B, & C axis output for values between 0 and 90 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A40 B50 C60",
+            "G1 X10.000 Y20.000 Z30.000 A40.000 B50.000 C60.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A40 B50 C60",
+            "G1 X0.3937 Y0.7874 Z1.1811 A40.0000 B50.0000 C60.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19710(self):
+        """Test combined A, B, & C axis output for 89 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A89 B89 C89",
+            "G1 X10.000 Y20.000 Z30.000 A89.000 B89.000 C89.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A89 B89 C89",
+            "G1 X0.3937 Y0.7874 Z1.1811 A89.0000 B89.0000 C89.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19720(self):
+        """Test combined A, B, & C axis output for 90 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A90 B90 C90",
+            "G1 X10.000 Y20.000 Z30.000 A90.000 B90.000 C90.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A90 B90 C90",
+            "G1 X0.3937 Y0.7874 Z1.1811 A90.0000 B90.0000 C90.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19730(self):
+        """Test combined A, B, & C axis output for 91 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A91 B91 C91",
+            "G1 X10.000 Y20.000 Z30.000 A91.000 B91.000 C91.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A91 B91 C91",
+            "G1 X0.3937 Y0.7874 Z1.1811 A91.0000 B91.0000 C91.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19740(self):
+        """Test combined A, B, & C axis output for values between 90 and 180 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A100 B110 C120",
+            "G1 X10.000 Y20.000 Z30.000 A100.000 B110.000 C120.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A100 B110 C120",
+            "G1 X0.3937 Y0.7874 Z1.1811 A100.0000 B110.0000 C120.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19750(self):
+        """Test combined A, B, & C axis output for values between 180 and 360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A240 B250 C260",
+            "G1 X10.000 Y20.000 Z30.000 A240.000 B250.000 C260.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A240 B250 C260",
+            "G1 X0.3937 Y0.7874 Z1.1811 A240.0000 B250.0000 C260.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19760(self):
+        """Test combined A, B, & C axis output for values greater than 360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A440 B450 C460",
+            "G1 X10.000 Y20.000 Z30.000 A440.000 B450.000 C460.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A440 B450 C460",
+            "G1 X0.3937 Y0.7874 Z1.1811 A440.0000 B450.0000 C460.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19770(self):
+        """Test combined A, B, & C axis output for values between 0 and -90 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-40 B-50 C-60",
+            "G1 X10.000 Y20.000 Z30.000 A-40.000 B-50.000 C-60.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-40 B-50 C-60",
+            "G1 X0.3937 Y0.7874 Z1.1811 A-40.0000 B-50.0000 C-60.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19780(self):
+        """Test combined A, B, & C axis output for values between -90 and -180 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-100 B-110 C-120",
+            "G1 X10.000 Y20.000 Z30.000 A-100.000 B-110.000 C-120.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-100 B-110 C-120",
+            "G1 X0.3937 Y0.7874 Z1.1811 A-100.0000 B-110.0000 C-120.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19790(self):
+        """Test combined A, B, & C axis output for values between -180 and -360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-240 B-250 C-260",
+            "G1 X10.000 Y20.000 Z30.000 A-240.000 B-250.000 C-260.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-240 B-250 C-260",
+            "G1 X0.3937 Y0.7874 Z1.1811 A-240.0000 B-250.0000 C-260.0000",
+            "--inches",
+        )
+
+    #############################################################################
+
+    def test19800(self):
+        """Test combined A, B, & C axis output for values below -360 degrees"""
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-440 B-450 C-460",
+            "G1 X10.000 Y20.000 Z30.000 A-440.000 B-450.000 C-460.000",
+            "",
+        )
+        self.compare_third_line(
+            "G1 X10 Y20 Z30 A-440 B-450 C-460",
+            "G1 X0.3937 Y0.7874 Z1.1811 A-440.0000 B-450.0000 C-460.0000",
+            "--inches",
+        )
