@@ -194,6 +194,229 @@ M6 T1
 
     #############################################################################
 
+    def test00125(self) -> None:
+        """Test chipbreaking amount."""
+        path = [
+            Path.Command("G0 X1 Y2"),
+            Path.Command("G0 Z8"),
+            Path.Command("G90"),
+            Path.Command("G99"),
+            Path.Command("G73 X1 Y2 Z0 F123 Q1.5 R5"),
+            Path.Command("G80"),
+            Path.Command("G90"),
+        ]
+        # check the default chipbreaking amount
+        self.multi_compare(
+            path,
+            """G90
+G21
+G54
+M6 T1
+G0 X1.000 Y2.000
+G0 Z8.000
+G90
+G0 X1.000 Y2.000
+G1 Z5.000 F7380.000
+G1 Z3.500 F7380.000
+G0 Z3.750
+G0 Z3.575
+G1 Z2.000 F7380.000
+G0 Z2.250
+G0 Z2.075
+G1 Z0.500 F7380.000
+G0 Z0.750
+G0 Z0.575
+G1 Z0.000 F7380.000
+G0 Z5.000
+G90
+""",
+            "--translate_drill",
+        )
+        # check for a metric chipbreaking amount
+        self.multi_compare(
+            path,
+            """G90
+G21
+G54
+M6 T1
+G0 X1.000 Y2.000
+G0 Z8.000
+G90
+G0 X1.000 Y2.000
+G1 Z5.000 F7380.000
+G1 Z3.500 F7380.000
+G0 Z4.735
+G0 Z3.575
+G1 Z2.000 F7380.000
+G0 Z3.235
+G0 Z2.075
+G1 Z0.500 F7380.000
+G0 Z1.735
+G0 Z0.575
+G1 Z0.000 F7380.000
+G0 Z5.000
+G90
+""",
+            "--translate_drill --chipbreaking_amount='1.23456 mm'",
+        )
+        # check for an inch/imperial chipbreaking amount
+        path = [
+            Path.Command("G0 X25.4 Y50.8"),
+            Path.Command("G0 Z203.2"),
+            Path.Command("G90"),
+            Path.Command("G99"),
+            Path.Command("G73 X25.4 Y50.8 Z0 F123 Q38.1 R127"),
+            Path.Command("G80"),
+            Path.Command("G90"),
+        ]
+        self.multi_compare(
+            path,
+            """G90
+G20
+G54
+M6 T1
+G0 X1.0000 Y2.0000
+G0 Z8.0000
+G90
+G0 X1.0000 Y2.0000
+G1 Z5.0000 F290.5512
+G1 Z3.5000 F290.5512
+G0 Z3.7500
+G0 Z3.5750
+G1 Z2.0000 F290.5512
+G0 Z2.2500
+G0 Z2.0750
+G1 Z0.5000 F290.5512
+G0 Z0.7500
+G0 Z0.5750
+G1 Z0.0000 F290.5512
+G0 Z5.0000
+G90
+""",
+            "--translate_drill --chipbreaking_amount='0.25 in' --inches",
+        )
+
+    #############################################################################
+
+    def test00126(self) -> None:
+        """Test command space."""
+        self.single_compare("G0 X10 Y20 Z30", "G0 X10.000 Y20.000 Z30.000", "")
+        self.single_compare(
+            "G0 X10 Y20 Z30", "G0X10.000Y20.000Z30.000", "--command_space=''"
+        )
+        self.single_compare(
+            "G0 X10 Y20 Z30", "G0_X10.000_Y20.000_Z30.000", "--command_space='_'"
+        )
+        path = [Path.Command("(comment with spaces)")]
+        self.multi_compare(
+            path,
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+G54
+(Finish operation: Fixture)
+(Begin operation)
+(TC: Default Tool)
+(Begin toolchange)
+( M6 T1 )
+(Finish operation: TC: Default Tool)
+(Begin operation)
+(comment with spaces)
+(Finish operation: Profile)
+(Begin postamble)
+""",
+            "--command_space=' ' --comments",
+        )
+        self.multi_compare(
+            path,
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+G54
+(Finish operation: Fixture)
+(Begin operation)
+(TC: Default Tool)
+(Begin toolchange)
+(M6T1)
+(Finish operation: TC: Default Tool)
+(Begin operation)
+(comment with spaces)
+(Finish operation: Profile)
+(Begin postamble)
+""",
+            "--command_space='' --comments",
+        )
+
+    #############################################################################
+
+    def test00127(self) -> None:
+        """Test comment symbol."""
+        path = [Path.Command("(comment with spaces)")]
+        self.multi_compare(
+            path,
+            """(Begin preamble)
+G90
+G21
+(Begin operation)
+G54
+(Finish operation: Fixture)
+(Begin operation)
+(TC: Default Tool)
+(Begin toolchange)
+( M6 T1 )
+(Finish operation: TC: Default Tool)
+(Begin operation)
+(comment with spaces)
+(Finish operation: Profile)
+(Begin postamble)
+""",
+            "--comments",
+        )
+        self.multi_compare(
+            path,
+            """;Begin preamble
+G90
+G21
+;Begin operation
+G54
+;Finish operation: Fixture
+;Begin operation
+;TC: Default Tool
+;Begin toolchange
+; M6 T1 
+;Finish operation: TC: Default Tool
+;Begin operation
+;comment with spaces
+;Finish operation: Profile
+;Begin postamble
+""",
+            "--comment_symbol=';' --comments",
+        )
+        self.multi_compare(
+            path,
+            """!Begin preamble
+G90
+G21
+!Begin operation
+G54
+!Finish operation: Fixture
+!Begin operation
+!TC: Default Tool
+!Begin toolchange
+! M6 T1 
+!Finish operation: TC: Default Tool
+!Begin operation
+!comment with spaces
+!Finish operation: Profile
+!Begin postamble
+""",
+            "--comment_symbol='!' --comments",
+        )
+
+    #############################################################################
+
     def test00130(self):
         """Test comments."""
         nl = "\n"
@@ -384,8 +607,16 @@ M6 T1
   --bcnc                Add Job operations as bCNC block headers. Consider
                         suppressing comments by adding --no-comments
   --no-bcnc             Suppress bCNC block header output (default)
+  --chipbreaking_amount CHIPBREAKING_AMOUNT
+                        Amount to move for chipbreaking in a translated G73
+                        command, default is 0.25 mm
+  --command_space COMMAND_SPACE
+                        The character to use between parts of a command,
+                        default is a space, may also use a null string
   --comments            Output comments (default)
   --no-comments         Suppress comment output
+  --comment_symbol COMMENT_SYMBOL
+                        The character used to start a comment, default is "("
   --feed-precision FEED_PRECISION
                         Number of digits of precision for feed rate, default
                         is 3
