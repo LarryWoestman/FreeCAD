@@ -301,12 +301,8 @@ G90
     def test00126(self) -> None:
         """Test command space."""
         self.single_compare("G0 X10 Y20 Z30", "G0 X10.000 Y20.000 Z30.000", "")
-        self.single_compare(
-            "G0 X10 Y20 Z30", "G0X10.000Y20.000Z30.000", "--command_space=''"
-        )
-        self.single_compare(
-            "G0 X10 Y20 Z30", "G0_X10.000_Y20.000_Z30.000", "--command_space='_'"
-        )
+        self.single_compare("G0 X10 Y20 Z30", "G0X10.000Y20.000Z30.000", "--command_space=''")
+        self.single_compare("G0 X10 Y20 Z30", "G0_X10.000_Y20.000_Z30.000", "--command_space='_'")
         path = [Path.Command("(comment with spaces)")]
         self.multi_compare(
             path,
@@ -385,7 +381,7 @@ G54
 ;Begin operation
 ;TC: Default Tool
 ;Begin toolchange
-; M6 T1 
+; M6 T1
 ;Finish operation: TC: Default Tool
 ;Begin operation
 ;comment with spaces
@@ -405,7 +401,7 @@ G54
 !Begin operation
 !TC: Default Tool
 !Begin toolchange
-! M6 T1 
+! M6 T1
 !Finish operation: TC: Default Tool
 !Begin operation
 !comment with spaces
